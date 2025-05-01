@@ -1,0 +1,14 @@
+# pycache
+*.pyc
+
+.vscode/
+
+.env
+
+.aws/
+.vercel
+
+.venv
+.ruff_cache
+.github
+.__pycache__

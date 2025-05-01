@@ -1,0 +1,50 @@
+{
+  "name": "stockly",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "forwardPorts": [8000],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker",
+        "esbenp.prettier-vscode",
+        "ms-vscode-remote.remote-containers",
+        "njpwerner.autodocstring",
+        "charliermarsh.ruff",
+        "yzhang.markdown-all-in-one",
+        "tamasfe.even-better-toml",
+        "ms-vscode.makefile-tools"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "python.linting.enabled": true,
+        "python.linting.lintOnSave": true,
+        "python.languageServer": "Pylance",
+        "python.formatting.provider": "black",
+        "python.analysis.autoImportCompletions": true,
+        "python.analysis.typeCheckingMode": "basic",
+        "black-formatter.importStrategy": "fromEnvironment",
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "ruff.interpreter": ["/usr/bin/python3"],
+        "ruff.organizeImports": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "autoDocstring.docstringFormat": "numpy",
+        "autoDocstring.startOnNewLine": true,
+        "autoDocstring.customTemplatePath": ".devcontainer/numpy.mustache",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": [
+            "source.organizeImports"
+          ]
+        }
+      }
+    }
+  },
+  "postCreateCommand": "pip install -r requirements.txt",
+  "remoteUser": "root"
+}
