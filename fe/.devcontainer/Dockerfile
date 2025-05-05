@@ -10,6 +10,9 @@ RUN npm install
 # Install required tools using apk (for Alpine)
 RUN apk update && apk add --no-cache make git
 
+RUN git config --global user.name "Ang Leng Khai"
+RUN git config --global user.email "lengkhai@gmail.com"
+
 # Copy the rest of the application code
 COPY . .
 

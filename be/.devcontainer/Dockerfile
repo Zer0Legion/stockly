@@ -6,6 +6,9 @@ COPY ../requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 RUN apt-get update && apt-get install -y make git
 
+RUN git config --global user.name "Ang Leng Khai"
+RUN git config --global user.email "lengkhai@gmail.com"
+
 COPY ../app/ ./app/
 # COPY ../firebase_key.json ./firebase_key.json
 
