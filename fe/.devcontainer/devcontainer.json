@@ -1,0 +1,23 @@
+{
+    "name": "Next.js Frontend",
+    "build": {
+      "dockerfile": "Dockerfile",
+      "context": ".."
+    },
+    "forwardPorts": [3000],
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "ms-azuretools.vscode-docker",
+          "esbenp.prettier-vscode",
+          "ms-vscode-remote.remote-containers",
+          "charliermarsh.ruff",
+          "yzhang.markdown-all-in-one",
+          "ms-vscode.makefile-tools",
+          "PulkitGangwar.nextjs-snippets"
+        ],
+      },
+    "postCreateCommand": "npm install",
+    "remoteUser": "node"
+  }
+}

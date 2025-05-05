@@ -1,0 +1,23 @@
+# Node.js dependencies
+node_modules/
+
+
+# Dependency directories
+/.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+
+# Static files cache
+.cache/
+
+# Environment variables
+.env
+
+# VS Code settings
+.vscode/
+
+# Docker
+docker-compose.override.yml
