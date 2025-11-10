@@ -1,6 +1,8 @@
 from fastapi import Depends, FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
+from models.request.generate_image_request import GenerateImageRequest
+from errors.base_error import StocklyError
 from settings import Settings
 from models.response.base_response import SuccessResponse, ErrorResponse
 from models.request.send_briefing_email_request import SendEmailRequest
@@ -71,5 +73,40 @@ def send_email(
         briefing_email_service.send_briefing_email(param)
 
         return SuccessResponse(data="Email sent successfully.")
+    except StocklyError as e:
+        return ErrorResponse(error_code=e.error_code, error_message=str(e))
+
+@app.post(
+    path="/create_openai_image",
+    dependencies=[
+        Depends(get_openai_service),
+    ],
+    responses={
+        200: {"model": SuccessResponse},
+        400: {"model": ErrorResponse},
+    },
+)
+def create_openai_image(
+    generate_image_request: GenerateImageRequest,
+):
+    """
+    Create an image using OpenAI's image generation capabilities.
+
+    Parameters
+    ----------
+    generate_image_request : GenerateImageRequest
+        The request object containing the image generation parameters.
+
+    Returns
+    -------
+    SuccessResponse[str]
+        URL of the generated image.
+    """
+    try:
+        # Assuming openai_service is injected and has a method create_image
+        openai_service = get_openai_service()
+        image_url = openai_service.generate_image_prompt(generate_image_request)
+
+        return SuccessResponse(data=image_url)
     except StocklyError as e:
         return ErrorResponse(error_code=e.error_code, error_message=str(e))

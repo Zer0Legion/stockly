@@ -2,7 +2,7 @@ import requests
 from openai import OpenAI
 
 from settings import Settings
-from models.request.generate_image_request import GenerateImageRequest
+from models.request.generate_image_request import GenerateImageRequest, SentimentEnum
 
 
 class OpenAIService:
@@ -66,6 +66,7 @@ class OpenAIService:
         I want to reflect the sentiment of the news articles in the image. The sentiment is {}.
         """
 
+        self.settings =  Settings().get_settings()
         prompt = TEMPLATE.format(request.text_prompt, request.sentiment.value)
 
         headers = {
@@ -78,6 +79,10 @@ class OpenAIService:
         response = requests.post(
             "https://api.openai.com/v1/images/generations", headers=headers, json=data
         ).json()
+        if response.get("error"):
+            print("Error generating image:", response["error"])
+            return None
+
         print(response)
         image_url = response["data"][0]["url"]
         return image_url
@@ -89,13 +94,22 @@ if __name__ == "__main__":
     # Positive
     print(
         openai_service.generate_image_prompt(
-            "Sales and Stock Performance: Apple COO Jeffrey Williams sold $24.9 million in stock, while analysts are optimistic about the company's future, with some firms raising their price targets and maintaining buy ratings amid a solid earnings report.",
-            "Positive",
+            GenerateImageRequest(
+                text_prompt="Sales and Stock Performance: Apple COO Jeffrey Williams sold $24.9 million in stock, while analysts are optimistic about the company's future, with some firms raising their price targets and maintaining buy ratings amid a solid earnings report.",
+                sentiment=SentimentEnum.ECSTATIC,
+            )
         )
     )
 
     # Disastrous
-    # print(prompter.generate_image_prompt("On September 15, 2008, Lehman Brothers filed for Chapter 11 bankruptcy protection following the exodus of most of its clients, drastic declines in its stock price, and the devaluation of assets by credit rating agencies. The collapse was largely due to Lehman's involvement in the subprime mortgage crisis and its exposure to less liquid assets.[6][7][8] Lehman's bankruptcy filing was the largest in US history, beating the previous record holder Enron,[9] and is thought to have played a major role in the unfolding of the 2007-2008 financial crisis. The market collapse also gave support to the 'too big to fail' doctrine.[10]", "Disastrous"))
+    print(
+        openai_service.generate_image_prompt(
+            GenerateImageRequest(
+                text_prompt="On September 15, 2008, Lehman Brothers filed for Chapter 11 bankruptcy protection following the exodus of most of its clients, drastic declines in its stock price, and the devaluation of assets by credit rating agencies. The collapse was largely due to Lehman's involvement in the subprime mortgage crisis and its exposure to less liquid assets.[6][7][8] Lehman's bankruptcy filing was the largest in US history, beating the previous record holder Enron,[9] and is thought to have played a major role in the unfolding of the 2007-2008 financial crisis. The market collapse also gave support to the 'too big to fail' doctrine.[10]",
+                sentiment=SentimentEnum.DISASTROUS,
+            )
+        )
+    )
 
     # Slightly negative
     # print(prompter.generate_image_prompt("After trading higher for much of the day, the S&P 500 changed course following the rate-cut announcement and as Fed Chair Jerome Powell addressed the press, ending with a daily loss of 3%. The Dow finished the session down 2.6%, extending its streak of down days to double digits for the first time in four decades. The Nasdaq dropped 3.6% as concerns about the interest-rate outlook weighed on the tech sector.", "Slightly negative"))
