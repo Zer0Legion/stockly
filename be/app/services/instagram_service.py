@@ -80,6 +80,7 @@ class InstagramService:
         try:
             container_ids = []
             for s3_object_id in req.s3_object_ids:
+                print("Creating container for S3 object ID:", s3_object_id)
                 container = self._create_container(InstagramImageRequest(s3_object_id=s3_object_id, caption=req.caption))
                 container_ids.append(container.get("id"))
 
@@ -93,6 +94,7 @@ class InstagramService:
                         container_ids
                     ),
                     "media_type": "CAROUSEL",
+                    "caption": req.caption,
                 },
             )
             if response:

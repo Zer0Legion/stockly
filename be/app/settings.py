@@ -42,8 +42,14 @@ class Settings(BaseModel):
     AWS_SECRET: str = ""
     AWS_REGION: str = ""
 
+    DEEPSEEK_KEY: str = ""
+    GEMINI_KEY: str = ""
+
     def get_settings(self) -> "Settings":
         config = {**dotenv_values("./.env")}
         for key, value in config.items():
-            setattr(self, key, value)
+            try:
+                setattr(self, key, value)
+            except Exception as e:
+                print(f"Error setting attribute {key}: {e}")
         return self

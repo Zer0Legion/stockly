@@ -36,12 +36,14 @@ def get_aws_service():
     return AWSService()
 
 
-def get_briefing_email_service():
+def get_stockly_service():
     return StocklyService(
         email_service=get_email_service(),
         parser_service=get_parser_service(),
         project_io_service=get_project_io_service(),
         openai_service=get_openai_service(),
+        aws_service=get_aws_service(),
+        instagram_service=get_instagram_service(),
     )
 
 

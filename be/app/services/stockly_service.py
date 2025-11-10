@@ -1,7 +1,14 @@
 from datetime import date
-
+import time
 import requests
 
+from models.request.aws_service_request import DeleteImageRequest, UploadImageRequest
+from models.request.generate_image_request import GenerateImageRequest, SentimentEnum
+from models.request.instagram_service_request import InstagramCarouselRequest
+from models.request.stock_request import StockRequestInfo
+from services import project_io_service
+from services.aws_service import AWSService
+from services.instagram_service import InstagramService
 from settings import Settings
 from errors.base_error import StocklyError
 from services.email_service import EmailService
@@ -10,6 +17,9 @@ from services.parser_service import ParserService
 from services.project_io_service import ProjectIoService
 from models.response.base_response import ErrorResponse, SuccessResponse
 from models.request.send_briefing_email_request import SendEmailRequest
+from logging_config import get_logger
+
+logger = get_logger()
 
 class StocklyService:
     """The service to perform higher-level processing of stock analysis."""
@@ -20,11 +30,16 @@ class StocklyService:
         parser_service: ParserService,
         project_io_service: ProjectIoService,
         openai_service: OpenAIService,
+        aws_service: AWSService,
+        instagram_service: InstagramService,
     ):
         self.email_service = email_service
         self.parser_service = parser_service
         self.project_io_service = project_io_service
         self.openai_service = openai_service
+        self.aws_service = aws_service
+        self.instagram_service = instagram_service
+        
         self.settings = Settings().get_settings()
 
     def send_briefing_email(
@@ -76,5 +91,96 @@ class StocklyService:
                 )
 
             return SuccessResponse(data="Email sent successfully.")
+        except StocklyError as e:
+            return ErrorResponse(error_code=e.error_code, error_message=str(e))
+
+    def create_end_to_end_post(self, stock: StockRequestInfo):
+        """
+        Create an end-to-end stock analysis post for a given stock request.
+
+        Parameters
+        ----------
+        stock_request : StockRequestInfo
+            The stock request information.
+
+        Returns
+        -------
+        SuccessResponse[str]
+            Post created successfully.
+        """
+        logger.info("Starting create_end_to_end_post for %s", stock.ticker)
+        try:
+            html_response = requests.get(
+                self.settings.URL_NEWS + stock.full_name
+            ).text
+
+            cleaned_html = self.parser_service.format_html(stock, html_response)
+
+            chatgpt_response = self.openai_service.generate_written_prompt(
+                stock.ticker, cleaned_html
+            )
+
+
+            chatgpt_text = chatgpt_response["choices"][0]["message"]["content"]
+            
+            split_text = self.parser_service.split_numbered_points(chatgpt_text)
+
+            caption = f"""Stockly's {date.today().strftime("%b %d")} Analysis on {stock.long_name} ({stock.exchange}:{stock.ticker})
+{chatgpt_text.replace("%", "%%").replace("#", "").replace("**", "")}
+"""         
+            logger.info(f"Generated caption {caption}")
+            s3_object_names = []
+
+            for prompt in split_text:
+                logger.info(f"Generating image prompt for: {prompt}")
+                
+                image_url = self.openai_service.generate_image_prompt(
+                    request=GenerateImageRequest(text_prompt=prompt, sentiment=self.parser_service.find_sentiment(chatgpt_text)),
+                )
+                if image_url:
+                    downloaded_file = self.project_io_service.download_image(image_url)
+                    s3_object = self.aws_service.upload_file(
+                        UploadImageRequest(
+                            file_path=downloaded_file,
+                            bucket=self.settings.AWS_BUCKET_NAME
+                        )
+                    )
+                    s3_object_names.append(s3_object.object_name)
+
+            # try publishing the carousel up to 3 times
+            max_attempts = 3
+            last_exc = None
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    logger.info("Attempt %d to publish carousel for %s", attempt, stock.ticker)
+                    success = self.instagram_service.publish_carousel_image(
+                        req=InstagramCarouselRequest(
+                            s3_object_ids=s3_object_names,
+                            caption=caption,
+                        )
+                    )
+                    if success:
+                        logger.info("publish_carousel_image succeeded on attempt %d", attempt)
+                        # Cleanup S3 bucket
+                        for s3_object_name in s3_object_names:
+                            self.aws_service.delete_file(
+                                param=DeleteImageRequest(
+                                    bucket=self.settings.AWS_BUCKET_NAME,
+                                    object_name=s3_object_name,
+                                )
+                            )
+                        # Cleanup local files
+                        self.project_io_service.delete_file(filename=downloaded_file)
+                        return SuccessResponse(data="Post created successfully.")
+                except Exception as e:
+                    last_exc = e
+                    logger.exception("publish_carousel_image failed on attempt %d: %s", attempt, e)
+                if attempt < max_attempts - 1:
+                    time.sleep(1)  
+                
+            # all attempts failed
+            logger.error("All %d attempts to publish carousel failed", max_attempts)
+            raise StocklyError({}, 500) from last_exc
         except StocklyError as e:
             return ErrorResponse(error_code=e.error_code, error_message=str(e))

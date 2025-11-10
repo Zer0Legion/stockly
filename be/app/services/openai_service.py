@@ -1,9 +1,11 @@
 import requests
 from openai import OpenAI
 
+from logging_config import get_logger
 from settings import Settings
 from models.request.generate_image_request import GenerateImageRequest, SentimentEnum
 
+logger = get_logger()
 
 class OpenAIService:
     def __init__(self):
@@ -45,6 +47,8 @@ class OpenAIService:
                 self.settings.OPENAI_URL, headers=headers, json=data
             ).json()
             self.cache[stock_ticker] = response
+
+            logger.info(f"Generated written prompt for {stock_ticker}: {response}")
             return response
 
     def generate_image_prompt(self, request: GenerateImageRequest):
@@ -81,6 +85,6 @@ class OpenAIService:
             print("Error generating image:", response["error"])
             return None
 
-        print(response)
+        logger.info(f"Generated image prompt response: {response}")
         image_url = response["data"][0]["url"]
         return image_url

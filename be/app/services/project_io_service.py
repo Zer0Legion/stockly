@@ -98,3 +98,15 @@ class ProjectIoService:
             return filename
         except Exception as e:
             raise ProjectIOError(str(e))
+
+    def delete_file(self, filename: str):
+        """
+        Deletes the file with the given filename.
+
+        Parameters
+        ----------
+        filename : os.PathLike
+            filename
+        """
+        if os.path.exists(filename):
+            os.remove(filename)
