@@ -29,7 +29,7 @@ class Settings(BaseModel):
     INSTA_ACCESS_TOKEN: str = "token"
 
     # Mode: 'live' or 'dev' - controls dev-only routes/features
-    ENV_MODE: MODE = MODE.LIVE
+    ENV_MODE: str = MODE.LIVE.value
 
     URL_NEWS: str = "https://news.google.com/search?q="
     URL_STOCKS: str = "https://www.google.com/finance/quote/"

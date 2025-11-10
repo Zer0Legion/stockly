@@ -19,5 +19,5 @@ app.add_middleware(
 )
 app.include_router(api_routes.router)
 
-if settings.ENV_MODE.value == MODE.DEV.value:
+if str(settings.ENV_MODE) == MODE.DEV.value:
     app.include_router(dev_routes.router)
