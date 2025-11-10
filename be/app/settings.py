@@ -36,6 +36,11 @@ class Settings(BaseModel):
 
     TNC_EFFECTIVE_DATE: str = "2024-01-01"
 
+    AWS_BUCKET_NAME: str = "stockly-bendover"
+    AWS_ACCESS_KEY: str = ""
+    AWS_SECRET: str = ""
+    AWS_REGION: str = ""
+
     def get_settings(self) -> "Settings":
         config = {**dotenv_values("./.env")}
         for key, value in config.items():
