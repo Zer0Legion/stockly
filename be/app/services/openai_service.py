@@ -53,15 +53,13 @@ class OpenAIService:
         """
 
         TEMPLATE = """
-        Generate an image based on the following text prompt. You may show an office setting of the company that I am mentioning. 
+        Generate an image based on the following text prompt. You may show a setting of the company that I am mentioning, and maybe show some traits specific to the company. 
         If you are about to generate an image of a person, I would prefer you to generate an executive in smartly dressed attire, 
         of different genders and races. 
         
         If possible, you are allowed to show the company logo. However, do not generate any text or numbers.
 
         {}
-
-        I would prefer the picture to show a verb, such as "presenting an earnings report" or "celebrating a successful quarter".
 
         I want to reflect the sentiment of the news articles in the image. The sentiment is {}.
         """

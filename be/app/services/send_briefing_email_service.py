@@ -11,8 +11,8 @@ from services.project_io_service import ProjectIoService
 from models.response.base_response import ErrorResponse, SuccessResponse
 from models.request.send_briefing_email_request import SendEmailRequest
 
-class BriefingEmailService:
-    """The service to send the stock analysis to the user via email."""
+class StocklyService:
+    """The service to perform higher-level processing of stock analysis."""
 
     def __init__(
         self,

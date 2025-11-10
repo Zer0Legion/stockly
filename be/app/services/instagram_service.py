@@ -1,17 +1,17 @@
 import requests
 
+from models.request.instagram_service_request import InstagramCarouselRequest, InstagramImageRequest
 from settings import Settings
 from errors.external_api_error import ExternalServiceError
 
-
 class InstagramService:
-    def _create_container(self, url: str, caption: str = ""):
+    def _create_container(self, req: InstagramImageRequest):
         settings = Settings().get_settings()
         response = requests.post(
             url=f"https://graph.instagram.com/v21.0/{settings.INSTA_USER_ID}/media",
             params={
-                "image_url": url,
-                "caption": caption,
+                "image_url": f"{settings.INSTA_CONTAINER_URL_PREFIX}{req.s3_object_id}",
+                "caption": req.caption,
                 "access_token": settings.INSTA_ACCESS_TOKEN,
             },
         )
@@ -35,7 +35,7 @@ class InstagramService:
         else:
             raise ExternalServiceError("Failed to publish container")
 
-    def publish_image(self, url: str, caption: str = "") -> dict | None:
+    def publish_image(self, req: InstagramImageRequest) -> dict | None:
         """
         Publishes an image to instagram as a post.
 
@@ -52,20 +52,58 @@ class InstagramService:
             the success response, or None
         """
         try:
-            container = self._create_container(url, caption)
+            container = self._create_container(req)
             container_id = container.get("id")
             return self._publish_container(container_id)
         except KeyError as e:
             print("Key not found in response:", e)
             print("Response:", container)
-            return None
+            raise e
         except ExternalServiceError as e:
             print("External service error:", e)
-            return None
+            raise e
 
+    def publish_carousel_image(self, req: InstagramCarouselRequest) -> dict | None:
+        """
+        Publishes a carousel of images to instagram as a post.
 
-# instagram_service = InstagramService()
-# container = instagram_service.publish_image(
-#     "http://127.0.0.1:8000/instagram_image?url=https%3A%2F%2Fstockly-bendover.s3.us-east-1.amazonaws.com%2F4f7455028d904ee2bd1c86965b1922ad"
-# )
-# print(container)
+        Parameters
+        ----------
+        reqs : list[InstagramImageRequest]
+            list of image requests
+
+        Returns
+        -------
+        dict | None
+            the success response, or None
+        """
+        try:
+            container_ids = []
+            for s3_object_id in req.s3_object_ids:
+                container = self._create_container(InstagramImageRequest(s3_object_id=s3_object_id, caption=req.caption))
+                container_ids.append(container.get("id"))
+
+            settings = Settings().get_settings()
+            response = requests.post(
+                url=f"https://graph.instagram.com/v21.0/{settings.INSTA_USER_ID}/media",
+                headers={"Content-Type": "application/json"},
+                params={
+                    "access_token": settings.INSTA_ACCESS_TOKEN,
+                    "children": ",".join(
+                        container_ids
+                    ),
+                    "media_type": "CAROUSEL",
+                },
+            )
+            if response:
+                carousel_container = response.json()
+                carousel_container_id = carousel_container.get("id")
+                return self._publish_container(carousel_container_id)
+            else:
+                raise ExternalServiceError("Failed to create carousel container")
+        except KeyError as e:
+            print("Key not found in response:", e)
+            raise e
+        except ExternalServiceError as e:
+            print("External service error:", e)
+            raise e

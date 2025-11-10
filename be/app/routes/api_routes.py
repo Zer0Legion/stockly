@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from models.request.send_briefing_email_request import SendEmailRequest
 from models.response.base_response import SuccessResponse, ErrorResponse
 from errors.base_error import StocklyError
-from services.send_briefing_email_service import BriefingEmailService
+from services.send_briefing_email_service import StocklyService
 from dependencies import get_briefing_email_service
 
 router = APIRouter()
@@ -22,7 +22,7 @@ def home():
 )
 def send_email(
     param: SendEmailRequest,
-    briefing_email_service: BriefingEmailService = Depends(get_briefing_email_service),
+    briefing_email_service: StocklyService = Depends(get_briefing_email_service),
 ):
     """
     Send an email to the user with the stock analysis.

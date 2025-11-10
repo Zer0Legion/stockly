@@ -4,7 +4,7 @@ from services.instagram_service import InstagramService
 from services.openai_service import OpenAIService
 from services.parser_service import ParserService
 from services.project_io_service import ProjectIoService
-from services.send_briefing_email_service import BriefingEmailService
+from services.send_briefing_email_service import StocklyService
 from services.terms_and_conditions_service import TermsAndConditionsService
 
 
@@ -37,7 +37,7 @@ def get_aws_service():
 
 
 def get_briefing_email_service():
-    return BriefingEmailService(
+    return StocklyService(
         email_service=get_email_service(),
         parser_service=get_parser_service(),
         project_io_service=get_project_io_service(),
