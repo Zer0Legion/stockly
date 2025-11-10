@@ -1,6 +1,10 @@
+import enum
 from dotenv import dotenv_values
 from pydantic import BaseModel
 
+class MODE(enum.Enum):
+    LIVE = "live"
+    DEV = "dev"
 
 class Settings(BaseModel):
     ORG_NAME: str = "Stockly"
@@ -24,8 +28,13 @@ class Settings(BaseModel):
     INSTA_USER_ID: str = "user"
     INSTA_ACCESS_TOKEN: str = "token"
 
+    # Mode: 'live' or 'dev' - controls dev-only routes/features
+    ENV_MODE: MODE = MODE.LIVE
+
     URL_NEWS: str = "https://news.google.com/search?q="
     URL_STOCKS: str = "https://www.google.com/finance/quote/"
+
+    TNC_EFFECTIVE_DATE: str = "2024-01-01"
 
     def get_settings(self) -> "Settings":
         config = {**dotenv_values("./.env")}
