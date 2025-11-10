@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 
+// Read the public API URL from environment (NEXT_PUBLIC_* is exposed to the browser)
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export default function Home() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:8000/')
+    fetch(`${API_URL}/`)
       .then((response) => response.json())
       .then((data) => setMessage(data.data))
       .catch((error) => console.error('Error fetching backend:', error));
