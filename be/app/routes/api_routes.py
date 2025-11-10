@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from models.request.send_briefing_email_request import SendEmailRequest
 from models.response.base_response import SuccessResponse, ErrorResponse
 from errors.base_error import StocklyError
-from services.send_briefing_email_service import StocklyService
+from services.stockly_service import StocklyService
 from dependencies import get_briefing_email_service
 
 router = APIRouter()

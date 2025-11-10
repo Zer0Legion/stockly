@@ -4,7 +4,7 @@ from services.instagram_service import InstagramService
 from services.openai_service import OpenAIService
 from services.parser_service import ParserService
 from services.project_io_service import ProjectIoService
-from services.send_briefing_email_service import StocklyService
+from services.stockly_service import StocklyService
 from services.terms_and_conditions_service import TermsAndConditionsService
 
 
