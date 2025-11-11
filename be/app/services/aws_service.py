@@ -1,9 +1,13 @@
 import uuid
+
 import boto3
 
-from settings import Settings
-from models.response.aws_service_response import S3StorageObject
-from models.request.aws_service_request import DeleteImageRequest, UploadImageRequest
+from app.models.request.aws_service_request import (
+    DeleteImageRequest,
+    UploadImageRequest,
+)
+from app.models.response.aws_service_response import S3StorageObject
+from app.settings import Settings
 
 
 class AWSService:
@@ -17,7 +21,7 @@ class AWSService:
             "s3",
             aws_access_key_id=settings.AWS_ACCESS_KEY,
             aws_secret_access_key=settings.AWS_SECRET,
-            region_name=settings.AWS_REGION
+            region_name=settings.AWS_REGION,
         )
 
     def upload_file(self, param: UploadImageRequest) -> S3StorageObject:

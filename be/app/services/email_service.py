@@ -4,7 +4,8 @@ from email.mime.text import MIMEText
 
 import markdown
 
-from settings import Settings
+from app.settings import Settings
+
 
 class EmailService:
     def __init__(self):

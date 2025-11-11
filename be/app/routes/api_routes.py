@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
 
-from models.request.send_briefing_email_request import SendEmailRequest
-from models.request.stock_request import StockRequestInfo
-from models.response.base_response import SuccessResponse, ErrorResponse
-from errors.base_error import StocklyError
-from services.stockly_service import StocklyService
-from dependencies import get_stockly_service
+from app.dependencies import get_stockly_service
+from app.errors.base_error import StocklyError
+from app.models.request.send_briefing_email_request import SendEmailRequest
+from app.models.request.stock_request import StockRequestInfo
+from app.models.response.base_response import ErrorResponse, SuccessResponse
+from app.services.stockly_service import StocklyService
 
 router = APIRouter()
 
@@ -33,6 +33,7 @@ def send_email(
         return SuccessResponse(data="Email sent successfully.")
     except StocklyError as e:
         return ErrorResponse(error_code=e.error_code, error_message=str(e))
+
 
 @router.post(
     path="/create_stockly_post",

@@ -1,17 +1,20 @@
 import enum
+
 from dotenv import dotenv_values
 from pydantic import BaseModel
+
 
 class MODE(enum.Enum):
     LIVE = "live"
     DEV = "dev"
 
+
 class Settings(BaseModel):
     ORG_NAME: str = "Stockly"
 
     # Endpoints
-    BACKEND_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:3000"
+    BACKEND_URL: str = "0.0.0.0"
+    FRONTEND_URL: str = "0.0.0.0"
 
     # Sending emails
     EMAIL_ADDRESS: str = "EMAIL_ADDRESS"
@@ -27,7 +30,9 @@ class Settings(BaseModel):
     # Instagram
     INSTA_USER_ID: str = "user"
     INSTA_ACCESS_TOKEN: str = "token"
-    INSTA_CONTAINER_URL_PREFIX: str = "https://stockly-bendover.s3.us-east-1.amazonaws.com/"
+    INSTA_CONTAINER_URL_PREFIX: str = (
+        "https://stockly-bendover.s3.us-east-1.amazonaws.com/"
+    )
 
     # Mode: 'live' or 'dev' - controls dev-only routes/features
     ENV_MODE: str = MODE.LIVE.value

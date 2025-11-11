@@ -1,5 +1,6 @@
-from errors.base_error import StocklyError
 from fastapi import status
+
+from app.errors.base_error import StocklyError
 
 
 class ProjectIOError(StocklyError):

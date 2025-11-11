@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from models.request.stock_request import StockRequestInfo
+from app.models.request.stock_request import StockRequestInfo
 
 
 class SendEmailUserRequest(BaseModel):

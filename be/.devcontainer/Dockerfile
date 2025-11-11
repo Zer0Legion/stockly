@@ -14,4 +14,4 @@ COPY ../app/ ./app/
 
 # Bind to the PORT environment variable (Render expects binding to 0.0.0.0:$PORT).
 # Use shell form so environment variable expansion works at container runtime.
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}

@@ -1,11 +1,11 @@
-from services.aws_service import AWSService
-from services.email_service import EmailService
-from services.instagram_service import InstagramService
-from services.openai_service import OpenAIService
-from services.parser_service import ParserService
-from services.project_io_service import ProjectIoService
-from services.stockly_service import StocklyService
-from services.terms_and_conditions_service import TermsAndConditionsService
+from app.services.aws_service import AWSService
+from app.services.email_service import EmailService
+from app.services.instagram_service import InstagramService
+from app.services.openai_service import OpenAIService
+from app.services.parser_service import ParserService
+from app.services.project_io_service import ProjectIoService
+from app.services.stockly_service import StocklyService
+from app.services.terms_and_conditions_service import TermsAndConditionsService
 
 
 def __init__():

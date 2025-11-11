@@ -1,7 +1,8 @@
 import bs4
 
-from models.request.generate_image_request import SentimentEnum
-from models.request.stock_request import StockRequestInfo
+from app.models.request.generate_image_request import SentimentEnum
+from app.models.request.stock_request import StockRequestInfo
+
 
 class ParserService:
     def format_html(self, stock: StockRequestInfo, txt: str):
@@ -86,7 +87,7 @@ class ParserService:
         text = text.lower()
 
         if text.find("sentiment") != -1:
-            narrowed_text = text[text.find("sentiment") + len("sentiment"):]
+            narrowed_text = text[text.find("sentiment") + len("sentiment") :]
             sentiment_of_narrowed_text = self.find_sentiment(narrowed_text)
             if sentiment_of_narrowed_text != SentimentEnum.NEUTRAL:
                 return sentiment_of_narrowed_text

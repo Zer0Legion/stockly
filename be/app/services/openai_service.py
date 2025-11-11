@@ -1,11 +1,14 @@
 import requests
 from openai import OpenAI
 
-from logging_config import get_logger
-from settings import Settings
-from models.request.generate_image_request import GenerateImageRequest, SentimentEnum
+from app.logging_config import get_logger
+from app.models.request.generate_image_request import (
+    GenerateImageRequest,
+)
+from app.settings import Settings
 
 logger = get_logger()
+
 
 class OpenAIService:
     def __init__(self):
@@ -68,7 +71,7 @@ class OpenAIService:
         I want to reflect the sentiment of the news articles in the image. The sentiment is {}.
         """
 
-        self.settings =  Settings().get_settings()
+        self.settings = Settings().get_settings()
         prompt = TEMPLATE.format(request.text_prompt, request.sentiment.value)
 
         headers = {

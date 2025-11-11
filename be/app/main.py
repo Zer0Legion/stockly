@@ -1,12 +1,12 @@
 import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from settings import MODE, Settings
-from routes import api_routes, dev_routes
-
 # centralized logging configuration
-from logging_config import configure_logging, get_logger
+from app.logging_config import configure_logging, get_logger
+from app.routes import api_routes, dev_routes
+from app.settings import MODE, Settings
 
 settings = Settings().get_settings()
 app = FastAPI()

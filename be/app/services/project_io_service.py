@@ -5,9 +5,9 @@ import os
 
 import requests
 
-from settings import Settings
-from errors.project_io_error import ProjectIOError
-from models.request.stock_request import StockRequestInfo
+from app.errors.project_io_error import ProjectIOError
+from app.models.request.stock_request import StockRequestInfo
+from app.settings import Settings
 
 
 class ProjectIoService:

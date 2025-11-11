@@ -1,6 +1,6 @@
 from fastapi import status
 
-from errors.base_error import StocklyError
+from app.errors.base_error import StocklyError
 
 
 class ExternalServiceError(StocklyError):
