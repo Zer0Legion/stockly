@@ -1,6 +1,8 @@
 import enum
+import os
+from pathlib import Path
 
-from dotenv import dotenv_values
+from dotenv import dotenv_values, find_dotenv
 from pydantic import BaseModel
 
 
@@ -51,8 +53,37 @@ class Settings(BaseModel):
     GEMINI_KEY: str = ""
 
     def get_settings(self) -> "Settings":
-        config = {**dotenv_values("./.env")}
-        for key, value in config.items():
+        """
+        Load configuration with the following precedence (highest last):
+        1) Code defaults (class attributes)
+        2) .env file values (if present)
+        3) Environment variables from the OS (Render dashboard, container env)
+        """
+        # 1) keep code defaults already on self
+
+        # 2) merge .env (if available) using a robust lookup
+        env_path = find_dotenv(usecwd=True)
+        if not env_path:
+            # fallback to repo root relative to this file
+            env_path = str(Path(__file__).resolve().parents[1] / ".env")
+        try:
+            if env_path and Path(env_path).exists():
+                for key, value in dotenv_values(env_path).items():
+                    if value is None:
+                        continue
+                    try:
+                        setattr(self, key, value)
+                    except Exception:
+                        # ignore unknown fields
+                        pass
+        except Exception:
+            # don't fail settings if dotenv parsing has issues
+            pass
+
+        # 3) overlay OS environment variables (highest precedence)
+        for key, value in os.environ.items():
+            if value in (None, ""):
+                continue
             try:
                 setattr(self, key, value)
             except Exception as e:
