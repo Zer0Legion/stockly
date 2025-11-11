@@ -12,4 +12,6 @@ RUN git config --global user.email "lengkhai@gmail.com"
 COPY ../app/ ./app/
 # COPY ../firebase_key.json ./firebase_key.json
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Bind to the PORT environment variable (Render expects binding to 0.0.0.0:$PORT).
+# Use shell form so environment variable expansion works at container runtime.
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload
