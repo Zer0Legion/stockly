@@ -14,7 +14,7 @@ class Settings(BaseModel):
 
     # Endpoints
     BACKEND_URL: str = "0.0.0.0"
-    FRONTEND_URL: str = "0.0.0.0"
+    FRONTEND_URL: str = "https://stockly-six.vercel.app/"
 
     # Sending emails
     EMAIL_ADDRESS: str = "EMAIL_ADDRESS"
@@ -45,7 +45,7 @@ class Settings(BaseModel):
     AWS_BUCKET_NAME: str = "stockly-bendover"
     AWS_ACCESS_KEY: str = ""
     AWS_SECRET: str = ""
-    AWS_REGION: str = ""
+    AWS_REGION: str = "us-east-1"
 
     DEEPSEEK_KEY: str = ""
     GEMINI_KEY: str = ""

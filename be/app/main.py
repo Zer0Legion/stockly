@@ -22,6 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+logger.info(f"Allowing CORS from {settings.FRONTEND_URL} and localhost")
+
 app.include_router(api_routes.router)
 
 if str(settings.ENV_MODE) == MODE.DEV.value:
