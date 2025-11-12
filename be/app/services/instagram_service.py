@@ -7,7 +7,7 @@ from app.models.request.instagram_service_request import (
     InstagramImageRequest,
 )
 from app.settings import Settings
-from logging_config import get_logger
+from app.logging_config import get_logger
 
 logger = get_logger(__name__)
 
