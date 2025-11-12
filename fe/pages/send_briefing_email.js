@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function UserStockForm() {
   const [userRequests, setUserRequests] = useState([
     {
@@ -62,7 +64,7 @@ export default function UserStockForm() {
     }
 
     try {
-      const res = await fetch("http://localhost:8000/send_email", {
+      const res = await fetch(`${API_URL}/send_email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
