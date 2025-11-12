@@ -86,6 +86,6 @@ class Settings(BaseModel):
                 continue
             try:
                 setattr(self, key, value)
-            except Exception as e:
-                print(f"Error setting attribute {key}: {e}")
+            except Exception:
+                pass
         return self

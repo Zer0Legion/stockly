@@ -12,7 +12,7 @@ settings = Settings().get_settings()
 app = FastAPI()
 
 configure_logging(level=logging.DEBUG)
-logger = get_logger()
+logger = get_logger(__name__)
 
 app.add_middleware(
     CORSMiddleware,

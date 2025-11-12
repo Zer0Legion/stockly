@@ -7,7 +7,7 @@ from app.models.request.generate_image_request import (
 )
 from app.settings import Settings
 
-logger = get_logger()
+logger = get_logger(__name__)
 
 
 class OpenAIService:

@@ -22,7 +22,7 @@ from app.services.parser_service import ParserService
 from app.services.project_io_service import ProjectIoService
 from app.settings import Settings
 
-logger = get_logger()
+logger = get_logger(__name__)
 
 
 class StocklyService:
@@ -98,7 +98,9 @@ class StocklyService:
         except StocklyError as e:
             return ErrorResponse(error_code=e.error_code, error_message=str(e))
 
-    def create_end_to_end_post(self, stock: StockRequestInfo):
+    def create_end_to_end_post(
+        self, stock: StockRequestInfo
+    ) -> SuccessResponse[str] | ErrorResponse:
         """
         Create an end-to-end stock analysis post for a given stock request.
 
@@ -151,46 +153,26 @@ class StocklyService:
                     )
                     s3_object_names.append(s3_object.object_name)
 
-            # try publishing the carousel up to 3 times
-            max_attempts = 3
-            last_exc = None
+            if self.instagram_service.publish_carousel_image(
+                req=InstagramCarouselRequest(
+                    s3_object_ids=s3_object_names,
+                    caption=caption,
+                )
+            ):
+                res = SuccessResponse(data="Post created successfully.")
 
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    logger.info(
-                        "Attempt %d to publish carousel for %s", attempt, stock.ticker
-                    )
-                    success = self.instagram_service.publish_carousel_image(
-                        req=InstagramCarouselRequest(
-                            s3_object_ids=s3_object_names,
-                            caption=caption,
-                        )
-                    )
-                    if success:
-                        logger.info(
-                            "publish_carousel_image succeeded on attempt %d", attempt
-                        )
-                        # Cleanup S3 bucket
-                        for s3_object_name in s3_object_names:
-                            self.aws_service.delete_file(
-                                param=DeleteImageRequest(
-                                    bucket=self.settings.AWS_BUCKET_NAME,
-                                    object_name=s3_object_name,
-                                )
-                            )
-                        # Cleanup local files
-                        self.project_io_service.delete_file(filename=downloaded_file)
-                        return SuccessResponse(data="Post created successfully.")
-                except Exception as e:
-                    last_exc = e
-                    logger.exception(
-                        "publish_carousel_image failed on attempt %d: %s", attempt, e
-                    )
-                if attempt < max_attempts - 1:
-                    time.sleep(1)
-
-            # all attempts failed
-            logger.error("All %d attempts to publish carousel failed", max_attempts)
-            raise StocklyError({}, 500) from last_exc
         except StocklyError as e:
-            return ErrorResponse(error_code=e.error_code, error_message=str(e))
+            res = ErrorResponse(error_code=e.error_code, error_message=str(e))
+
+        # Cleanup S3 bucket
+        for s3_object_name in s3_object_names:
+            self.aws_service.delete_file(
+                param=DeleteImageRequest(
+                    bucket=self.settings.AWS_BUCKET_NAME,
+                    object_name=s3_object_name,
+                )
+            )
+        # Cleanup local files
+        self.project_io_service.delete_file(filename=downloaded_file)
+
+        return res

@@ -1,4 +1,5 @@
 import requests
+import time
 
 from app.errors.external_api_error import ExternalServiceError
 from app.models.request.instagram_service_request import (
@@ -6,17 +7,22 @@ from app.models.request.instagram_service_request import (
     InstagramImageRequest,
 )
 from app.settings import Settings
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class InstagramService:
+    def __init__(self):
+        self.settings = Settings().get_settings()
+
     def _create_container(self, req: InstagramImageRequest):
-        settings = Settings().get_settings()
         response = requests.post(
-            url=f"https://graph.instagram.com/v21.0/{settings.INSTA_USER_ID}/media",
+            url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media",
             params={
-                "image_url": f"{settings.INSTA_CONTAINER_URL_PREFIX}{req.s3_object_id}",
+                "image_url": f"{self.settings.INSTA_CONTAINER_URL_PREFIX}{req.s3_object_id}",
                 "caption": req.caption,
-                "access_token": settings.INSTA_ACCESS_TOKEN,
+                "access_token": self.settings.INSTA_ACCESS_TOKEN,
             },
         )
         if response:
@@ -25,12 +31,12 @@ class InstagramService:
             raise ExternalServiceError("Failed to create container")
 
     def _publish_container(self, container_id: str):
-        settings = Settings().get_settings()
+        logger.info(f"Publishing container with ID: {container_id}")
         response = requests.post(
-            url=f"https://graph.instagram.com/v21.0/{settings.INSTA_USER_ID}/media_publish",
+            url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media_publish",
             headers={"Content-Type": "application/json"},
             params={
-                "access_token": settings.INSTA_ACCESS_TOKEN,
+                "access_token": self.settings.INSTA_ACCESS_TOKEN,
                 "creation_id": container_id,
             },
         )
@@ -60,11 +66,11 @@ class InstagramService:
             container_id = container.get("id")
             return self._publish_container(container_id)
         except KeyError as e:
-            print("Key not found in response:", e)
-            print("Response:", container)
+            logger.error("Key not found in response:", e)
+            logger.error("Response:", container)
             raise e
         except ExternalServiceError as e:
-            print("External service error:", e)
+            logger.error("External service error:", e)
             raise e
 
     def publish_carousel_image(self, req: InstagramCarouselRequest) -> dict | None:
@@ -82,36 +88,67 @@ class InstagramService:
             the success response, or None
         """
         try:
+
+            # Get IG container IDs
             container_ids = []
             for s3_object_id in req.s3_object_ids:
-                print("Creating container for S3 object ID:", s3_object_id)
-                container = self._create_container(
-                    InstagramImageRequest(
-                        s3_object_id=s3_object_id, caption=req.caption
-                    )
-                )
-                container_ids.append(container.get("id"))
+                logger.info(f"Creating container for S3 object ID: {s3_object_id}")
 
-            settings = Settings().get_settings()
-            response = requests.post(
-                url=f"https://graph.instagram.com/v21.0/{settings.INSTA_USER_ID}/media",
-                headers={"Content-Type": "application/json"},
-                params={
-                    "access_token": settings.INSTA_ACCESS_TOKEN,
-                    "children": ",".join(container_ids),
-                    "media_type": "CAROUSEL",
-                    "caption": req.caption,
-                },
-            )
-            if response:
-                carousel_container = response.json()
-                carousel_container_id = carousel_container.get("id")
-                return self._publish_container(carousel_container_id)
-            else:
-                raise ExternalServiceError("Failed to create carousel container")
+                try:
+                    container = self._create_container(
+                        InstagramImageRequest(
+                            s3_object_id=s3_object_id, caption=req.caption
+                        )
+                    )
+                    container_ids.append(container.get("id"))
+                except ExternalServiceError as e:
+                    logger.error(
+                        f"Failed to create container for S3 object ID {s3_object_id}:",
+                        e,
+                    )
+                    pass
+
+            # Publish carousel container with the obtained IDs
+
+            max_attempts = 3
+            last_exc = None
+            caption = req.caption
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    logger.info(
+                        f"Attempt {attempt} to create carousel with containers: {container_ids}\n{caption}"
+                    )
+                    response = requests.post(
+                        url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media",
+                        headers={"Content-Type": "application/json"},
+                        params={
+                            "access_token": self.settings.INSTA_ACCESS_TOKEN,
+                            "children": ",".join(container_ids),
+                            "media_type": "CAROUSEL",
+                            "caption": caption,
+                        },
+                    )
+
+                    if response:
+                        carousel_container = response.json()
+                        carousel_container_id = carousel_container.get("id")
+                        return self._publish_container(carousel_container_id)
+                except Exception as e:
+                    last_exc = e
+
+                    logger.exception(
+                        f"publish_carousel_image failed on attempt {attempt}: {e}\n{container_ids}\n{caption}"
+                    )
+                    logger.info("Retrying with empty caption")
+                    caption = ""
+                if attempt < max_attempts:
+                    time.sleep(1)
+            if last_exc:
+                raise last_exc
         except KeyError as e:
-            print("Key not found in response:", e)
+            logger.error("Key not found in response:", e)
             raise e
         except ExternalServiceError as e:
-            print("External service error:", e)
+            logger.error("External service error:", e)
             raise e
