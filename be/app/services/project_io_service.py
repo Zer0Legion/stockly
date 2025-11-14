@@ -204,7 +204,12 @@ class ProjectIoService:
 
         # Split existing paragraphs, wrap each separately
 
-        bolded, caption = [t.strip() for t in text.split(":", 1)]
+        if len([t.strip() for t in text.split(":", 1)]) == 2:
+            bolded, caption = [t.strip() for t in text.split(":", 1)]
+        else:
+            bolded = ""
+            caption = text
+
         wrapped_lines: list[str] = [bolded]
 
         for paragraph in caption.splitlines():

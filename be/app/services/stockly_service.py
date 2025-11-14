@@ -196,7 +196,7 @@ class StocklyService:
                 self.get_stock_analysis(stock).replace("#", "").replace("**", "")
             )
 
-            stock_analysis = stock_analysis.replace("Summary:", f"{stock.long_name} ({stock.exchange}:{stock.ticker}) Analysis")
+            stock_analysis = stock_analysis.replace("Summary:", f"{stock.long_name} ({stock.exchange}:{stock.ticker}) Analysis:")
             split_text = self.parser_service.split_text_for_images(stock_analysis)
 
             caption = f"""{date.today().strftime("%b %d")} Analysis on {stock.long_name} ({stock.exchange}:{stock.ticker})"""
