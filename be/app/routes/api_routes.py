@@ -51,3 +51,21 @@ def create_stockly_post(
         return stockly_service.create_end_to_end_post(stock)
     except StocklyError as e:
         return ErrorResponse(error_code=e.error_code, error_message=str(e))
+
+
+@router.post(
+    path="/stock_analysis",
+    dependencies=[Depends(get_stockly_service)],
+    responses={200: {"model": SuccessResponse}, 400: {"model": ErrorResponse}},
+)
+def stock_analysis(
+    stock: StockRequestInfo,
+    stockly_service: StocklyService = Depends(get_stockly_service),
+):
+    """
+    Perform stock analysis for a given stock request.
+    """
+    try:
+        return stockly_service.get_stock_analysis(stock)
+    except StocklyError as e:
+        return ErrorResponse(error_code=e.error_code, error_message=str(e))

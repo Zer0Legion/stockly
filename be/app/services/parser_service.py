@@ -40,7 +40,7 @@ class ParserService:
             aria_labels_string = aria_labels_string.replace(r, "")
         return aria_labels_string
 
-    def split_numbered_points(self, text: str) -> list[str]:
+    def split_text_for_images(self, text: str) -> list[str]:
         """Split text into numbered points.
 
         Parameters
@@ -56,7 +56,17 @@ class ParserService:
         points = []
         current_point = ""
 
-        for line in text.splitlines():
+        # Split numbered points and sentiment analysis section
+        sentiment_index = text.lower().find("sentiment analysis:")
+        if sentiment_index != -1:
+            main_text = text[:sentiment_index]
+            sentiment_text = text[sentiment_index:]
+        else:
+            main_text = text
+            sentiment_text = ""
+
+        # Split numbered points
+        for line in main_text.splitlines():
             line = line.strip()
             if line and line[0].isdigit() and (line[1] == "." or line[1] == ")"):
                 if current_point:
@@ -67,6 +77,10 @@ class ParserService:
 
         if current_point:
             points.append(current_point.strip())
+
+        # Add sentiment analysis as a separate point
+        if sentiment_text:
+            points.append(sentiment_text.replace(":", "\n").strip())
 
         return points
 

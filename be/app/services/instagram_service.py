@@ -1,3 +1,4 @@
+from httpx import head
 import requests
 import time
 
@@ -8,6 +9,7 @@ from app.models.request.instagram_service_request import (
 )
 from app.settings import Settings
 from app.logging_config import get_logger
+from app.models.response.instagram_service_response import InstagramContainerStatus, InstagramContainerStatusCodeEnum, InstagramServiceContainer
 
 logger = get_logger(__name__)
 
@@ -16,7 +18,7 @@ class InstagramService:
     def __init__(self):
         self.settings = Settings().get_settings()
 
-    def _create_container(self, req: InstagramImageRequest):
+    def _create_container(self, req: InstagramImageRequest) -> InstagramServiceContainer:
         response = requests.post(
             url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media",
             params={
@@ -26,26 +28,29 @@ class InstagramService:
             },
         )
         if response:
-            return response.json()
+            logger.info("Created container response: %s", response.json())
+            return InstagramServiceContainer.model_validate(response.json())
         else:
             raise ExternalServiceError("Failed to create container")
 
-    def _publish_container(self, container_id: str):
-        logger.info(f"Publishing container with ID: {container_id}")
+    def publish_container(self, container: InstagramServiceContainer) -> InstagramServiceContainer:
+        logger.info(f"Publishing container with ID: {container.id}")
         response = requests.post(
             url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media_publish",
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.settings.INSTA_ACCESS_TOKEN}",
+            },
             params={
-                "access_token": self.settings.INSTA_ACCESS_TOKEN,
-                "creation_id": container_id,
+                "creation_id": container.id,
             },
         )
         if response:
-            return response.json()
+            return InstagramServiceContainer.model_validate(response.json())
         else:
-            raise ExternalServiceError("Failed to publish container")
+            raise ExternalServiceError(f"Failed to publish container Errors: {response.json()}")
 
-    def publish_image(self, req: InstagramImageRequest) -> dict | None:
+    def publish_image(self, req: InstagramImageRequest) -> InstagramServiceContainer:
         """
         Publishes an image to instagram as a post.
 
@@ -63,8 +68,7 @@ class InstagramService:
         """
         try:
             container = self._create_container(req)
-            container_id = container.get("id")
-            return self._publish_container(container_id)
+            return self.publish_container(container)
         except KeyError as e:
             logger.error("Key not found in response:", e)
             logger.error("Response:", container)
@@ -73,7 +77,7 @@ class InstagramService:
             logger.error("External service error:", e)
             raise e
 
-    def publish_carousel_image(self, req: InstagramCarouselRequest) -> dict | None:
+    def publish_carousel_image(self, req: InstagramCarouselRequest) -> InstagramServiceContainer:
         """
         Publishes a carousel of images to instagram as a post.
 
@@ -89,66 +93,139 @@ class InstagramService:
         """
         try:
 
-            # Get IG container IDs
-            container_ids = []
-            for s3_object_id in req.s3_object_ids:
-                logger.info(f"Creating container for S3 object ID: {s3_object_id}")
+            # Get IG containers
+            if req.instagram_container_ids:
+                containers = [
+                    InstagramServiceContainer(id=container_id) for container_id in req.instagram_container_ids
+                ]
+            else:
+                containers = []
+                for s3_object_id in req.s3_object_ids:
+                    logger.info(f"Creating container for S3 object ID: {s3_object_id}")
 
-                try:
-                    container = self._create_container(
-                        InstagramImageRequest(
-                            s3_object_id=s3_object_id, caption=req.caption
+                    try:
+                        container = self._create_container(
+                            InstagramImageRequest(
+                                s3_object_id=s3_object_id, caption=""
+                            )
                         )
-                    )
-                    container_ids.append(container.get("id"))
-                except ExternalServiceError as e:
-                    logger.error(
-                        f"Failed to create container for S3 object ID {s3_object_id}:",
-                        e,
-                    )
-                    pass
+                        containers.append(container)
+                    except ExternalServiceError as e:
+                        logger.error(
+                            f"Failed to create container for S3 object ID {s3_object_id}:",
+                            e,
+                        )
+                        pass
 
             # Publish carousel container with the obtained IDs
-
             max_attempts = 3
             last_exc = None
             caption = req.caption
-
+            logger.info(f"caption: {caption}")
             for attempt in range(1, max_attempts + 1):
                 try:
                     logger.info(
-                        f"Attempt {attempt} to create carousel with containers: {container_ids}\n{caption}"
+                        f"Attempt {attempt} to create carousel with containers: {containers}\n{caption}"
                     )
                     response = requests.post(
                         url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media",
-                        headers={"Content-Type": "application/json"},
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {self.settings.INSTA_ACCESS_TOKEN}",
+                        },
                         params={
-                            "access_token": self.settings.INSTA_ACCESS_TOKEN,
-                            "children": ",".join(container_ids),
+                            "children": ",".join([container.id for container in containers]),
                             "media_type": "CAROUSEL",
                             "caption": caption,
                         },
                     )
 
                     if response:
-                        carousel_container = response.json()
-                        carousel_container_id = carousel_container.get("id")
-                        return self._publish_container(carousel_container_id)
+                        carousel_container = InstagramServiceContainer.model_validate(response.json())
+
+                        while self.get_container_status(carousel_container).status_code != InstagramContainerStatusCodeEnum.FINISHED:
+                            logger.info("Waiting for carousel container to be ready...")
+                            time.sleep(2)
+
+                        return self.publish_container(carousel_container)
                 except Exception as e:
                     last_exc = e
 
                     logger.exception(
-                        f"publish_carousel_image failed on attempt {attempt}: {e}\n{container_ids}\n{caption}"
+                        f"publish_carousel_image failed on attempt {attempt}: {e}\n{containers}\n{caption}"
                     )
                     logger.info("Retrying with empty caption")
-                    caption = ""
+                    caption = "Stockly"
                 if attempt < max_attempts:
                     time.sleep(1)
             if last_exc:
                 raise last_exc
         except KeyError as e:
-            logger.error("Key not found in response:", e)
+            logger.error(f"Key not found in response: {e}")
             raise e
         except ExternalServiceError as e:
-            logger.error("External service error:", e)
+            logger.error(f"External service error: {e}")
             raise e
+        
+    def create_carousel_container(self, ig_container_ids: list[str], caption: str) -> InstagramServiceContainer:
+        """
+        Creates an Instagram carousel container.
+
+        Parameters
+        ----------
+        ig_container_ids : list[str]
+            List of Instagram container IDs.
+        caption : str
+            Caption for the carousel.
+
+        Returns
+        -------
+        dict
+            The response from Instagram API.
+        """
+        response = requests.post(
+            url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media",
+            headers={"Content-Type": "application/json"},
+            params={
+                "access_token": self.settings.INSTA_ACCESS_TOKEN,
+                "children": ",".join(ig_container_ids),
+                "media_type": "CAROUSEL",
+                "caption": caption,
+            },
+        )
+        if response:
+            return InstagramServiceContainer.model_validate(response.json())
+        else:
+            raise ExternalServiceError("Failed to create carousel container")
+    
+
+        
+    def get_container_status(self, container: InstagramServiceContainer) -> InstagramContainerStatus:
+        """
+        Get the status of an Instagram container.
+
+        Parameters
+        ----------
+        container_id : str
+            The Instagram container ID.
+
+        Returns
+        -------
+        InstagramContainerStatus
+            The status of the container.
+        """
+        response = requests.get(
+            url=f"https://graph.instagram.com/v21.0/{container.id}",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.settings.INSTA_ACCESS_TOKEN}"
+            },
+            params={
+                "fields": "status_code,id,status",
+            },
+        )
+        if response:
+            data = response.json()
+            return InstagramContainerStatus.model_validate(data)
+        else:
+            raise ExternalServiceError("Failed to get container status")

@@ -45,6 +45,31 @@ class StocklyService:
 
         self.settings = Settings().get_settings()
 
+    def get_stock_analysis(self, stock: StockRequestInfo) -> str:
+        """
+        Get analysis of the given stock.
+
+        Parameters
+        ----------
+        stock : StockRequestInfo
+            The stock request information.
+
+        Returns
+        -------
+        str
+            The analysis of the stock.
+        """
+        html_response = requests.get(self.settings.URL_NEWS + stock.full_name).text
+
+        cleaned_html = self.parser_service.format_html(stock, html_response)
+
+        chatgpt_response = self.openai_service.generate_written_prompt(
+            stock.ticker, cleaned_html
+        )
+        chatgpt_text = chatgpt_response["choices"][0]["message"]["content"]
+
+        return chatgpt_text
+
     def send_briefing_email(
         self,
         param: SendEmailRequest,
@@ -115,22 +140,19 @@ class StocklyService:
         """
         logger.info("Starting create_end_to_end_post for %s", stock.ticker)
         try:
-            html_response = requests.get(self.settings.URL_NEWS + stock.full_name).text
-
-            cleaned_html = self.parser_service.format_html(stock, html_response)
-
-            chatgpt_response = self.openai_service.generate_written_prompt(
-                stock.ticker, cleaned_html
+            stock_analysis = (
+                self.get_stock_analysis(stock).replace("#", "").replace("**", "")
             )
 
-            chatgpt_text = chatgpt_response["choices"][0]["message"]["content"]
+            stock_analysis = stock_analysis.replace("Summary:", f"{stock.long_name} ({stock.exchange}:{stock.ticker}) Analysis")
+            split_text = self.parser_service.split_text_for_images(stock_analysis)
 
-            split_text = self.parser_service.split_numbered_points(chatgpt_text)
+            caption = f"""{date.today().strftime("%b %d")} Analysis on {stock.long_name} ({stock.exchange}:{stock.ticker})
 
-            caption = f"""Stockly's {date.today().strftime("%b %d")} Analysis on {stock.long_name} ({stock.exchange}:{stock.ticker})
-{chatgpt_text.replace("%", "%%").replace("#", "").replace("**", "")}
-"""
-            logger.info(f"Generated caption {caption}")
+#stockly #{stock.ticker} #{stock.exchange} #finance #stocks #investing #stockmarket #trading #wallstreet #business #genai #openai #ai #money #financialnews #economy #investment #wealth #daytrading #stockanalysis #financialfreedom #stocktips #marketanalysis"""
+            
+            logger.info(f"caption: {caption}")
+
             s3_object_names = []
 
             for prompt in split_text:
@@ -139,18 +161,24 @@ class StocklyService:
                 image_url = self.openai_service.generate_image_prompt(
                     request=GenerateImageRequest(
                         text_prompt=prompt,
-                        sentiment=self.parser_service.find_sentiment(chatgpt_text),
+                        sentiment=self.parser_service.find_sentiment(stock_analysis),
                     ),
                 )
                 if image_url:
                     downloaded_file = self.project_io_service.download_image(image_url)
+                    downloaded_file_with_text = self.project_io_service.text_overlay(
+                        image_filepath=downloaded_file,
+                        text=prompt,
+                    )
                     s3_object = self.aws_service.upload_file(
                         UploadImageRequest(
-                            file_path=downloaded_file,
+                            file_path=downloaded_file_with_text,
                             bucket=self.settings.AWS_BUCKET_NAME,
                         )
                     )
                     s3_object_names.append(s3_object.object_name)
+
+            logger.info(f"S3 Object Names: {s3_object_names}")
 
             if self.instagram_service.publish_carousel_image(
                 req=InstagramCarouselRequest(
@@ -173,5 +201,6 @@ class StocklyService:
             )
         # Cleanup local files
         self.project_io_service.delete_file(filename=downloaded_file)
+        self.project_io_service.delete_file(filename=downloaded_file_with_text)
 
         return res

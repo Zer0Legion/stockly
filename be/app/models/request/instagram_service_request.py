@@ -7,4 +7,5 @@ class InstagramImageRequest(BaseModel):
 
 class InstagramCarouselRequest(BaseModel):
     s3_object_ids: list[str]
+    instagram_container_ids: list[str] = []
     caption: str = ""

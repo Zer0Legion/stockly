@@ -109,6 +109,3 @@ def upload_carousel_to_instagram(s3_object_names: list[str], caption: str = ""):
             return SuccessResponse(data="Carousel uploaded to Instagram successfully.")
     except StocklyError as e:
         return ErrorResponse(error_code=e.error_code, error_message=str(e))
-
-
-# 4b0debd30041460caa2bfe63d69d7fae 4f7455028d904ee2bd1c86965b1922ad

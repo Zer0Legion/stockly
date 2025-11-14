@@ -11,7 +11,7 @@ from app.settings import MODE, Settings
 settings = Settings().get_settings()
 app = FastAPI()
 
-configure_logging(level=logging.DEBUG)
+configure_logging(level=logging.INFO)
 logger = get_logger(__name__)
 
 app.add_middleware(
