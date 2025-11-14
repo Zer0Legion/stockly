@@ -36,6 +36,9 @@ class Settings(BaseModel):
         "https://stockly-bendover.s3.us-east-1.amazonaws.com/"
     )
 
+    # The last picture of every stockly post
+    LAST_INSTAGRAM_PICTURE_S3_NAME: str = "b3d63e0ade95486c9cde2cce567ff790"
+
     # Mode: 'live' or 'dev' - controls dev-only routes/features
     ENV_MODE: str = MODE.LIVE.value
 

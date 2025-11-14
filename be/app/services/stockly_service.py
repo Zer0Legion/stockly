@@ -23,6 +23,33 @@ from app.settings import Settings
 
 logger = get_logger(__name__)
 
+CAPTION_HASHTAGS = [
+    "stockly",
+    "finance", 
+    "stocks", 
+    "investing", 
+    "stockmarket", 
+    "trading", 
+    "wallstreet", 
+    "business", 
+    "genai", 
+    "openai", 
+    "ai", 
+    "money", 
+    "financialnews", 
+    "economy", 
+    "investment", 
+    "wealth", 
+    "daytrading", 
+    "stockanalysis", 
+    "financialfreedom", 
+    "stocktips", 
+    "marketanalysis",
+    "education",
+    "educational",
+    "economics",
+    "personalfinance",
+]
 
 class StocklyService:
     """The service to perform higher-level processing of stock analysis."""
@@ -122,6 +149,31 @@ class StocklyService:
         except StocklyError as e:
             return ErrorResponse(error_code=e.error_code, error_message=str(e))
 
+    def _add_hashtags_to_caption(self, caption: str, stock: StockRequestInfo) -> str:
+        """Add relevant hashtags to the caption.
+
+        Parameters
+        ----------
+        caption : str
+            The caption to add hashtags to.
+        stock : StockRequestInfo
+            The stock request information.
+
+        Returns
+        -------
+        str
+            The caption with hashtags added.
+        """
+        hashtags = CAPTION_HASHTAGS + [
+            stock.ticker,
+            stock.exchange,
+        ]
+
+        caption = caption + "\n"
+        hashtags = " ".join([f"#{tag}" for tag in hashtags])
+        
+        return caption + hashtags
+
     def create_end_to_end_post(
         self, stock: StockRequestInfo
     ) -> SuccessResponse[str] | ErrorResponse:
@@ -147,9 +199,9 @@ class StocklyService:
             stock_analysis = stock_analysis.replace("Summary:", f"{stock.long_name} ({stock.exchange}:{stock.ticker}) Analysis")
             split_text = self.parser_service.split_text_for_images(stock_analysis)
 
-            caption = f"""{date.today().strftime("%b %d")} Analysis on {stock.long_name} ({stock.exchange}:{stock.ticker})
-
-#stockly #{stock.ticker} #{stock.exchange} #finance #stocks #investing #stockmarket #trading #wallstreet #business #genai #openai #ai #money #financialnews #economy #investment #wealth #daytrading #stockanalysis #financialfreedom #stocktips #marketanalysis"""
+            caption = f"""{date.today().strftime("%b %d")} Analysis on {stock.long_name} ({stock.exchange}:{stock.ticker})"""
+            
+            caption = self._add_hashtags_to_caption(caption, stock)
             
             logger.info(f"caption: {caption}")
 
@@ -177,6 +229,8 @@ class StocklyService:
                         )
                     )
                     s3_object_names.append(s3_object.object_name)
+            
+            s3_object_names.append(self.settings.LAST_INSTAGRAM_PICTURE_S3_NAME)
 
             logger.info(f"S3 Object Names: {s3_object_names}")
 
@@ -191,16 +245,27 @@ class StocklyService:
         except StocklyError as e:
             res = ErrorResponse(error_code=e.error_code, error_message=str(e))
 
+        self.cleanup_temp_files(
+            s3_object_names,
+            downloaded_file,
+            downloaded_file_with_text,
+        )
+
+        return res
+
+    def cleanup_temp_files(self, s3_object_names: list[str], downloaded_file: str, downloaded_file_with_text: str):
+        """
+        Cleanup temporary files created during processing.
+        """
         # Cleanup S3 bucket
         for s3_object_name in s3_object_names:
-            self.aws_service.delete_file(
-                param=DeleteImageRequest(
-                    bucket=self.settings.AWS_BUCKET_NAME,
-                    object_name=s3_object_name,
+            if s3_object_name != self.settings.LAST_INSTAGRAM_PICTURE_S3_NAME:
+                self.aws_service.delete_file(
+                    param=DeleteImageRequest(
+                        bucket=self.settings.AWS_BUCKET_NAME,
+                        object_name=s3_object_name,
+                    )
                 )
-            )
         # Cleanup local files
         self.project_io_service.delete_file(filename=downloaded_file)
         self.project_io_service.delete_file(filename=downloaded_file_with_text)
-
-        return res
