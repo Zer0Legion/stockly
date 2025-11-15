@@ -6,6 +6,7 @@ from app.services.parser_service import ParserService
 from app.services.project_io_service import ProjectIoService
 from app.services.stockly_service import StocklyService
 from app.services.terms_and_conditions_service import TermsAndConditionsService
+from app.services.fetch_logo_service import FetchLogoService
 
 
 def __init__():
@@ -36,6 +37,10 @@ def get_aws_service():
     return AWSService()
 
 
+def get_fetch_logo_service():
+    return FetchLogoService()
+
+
 def get_stockly_service():
     return StocklyService(
         email_service=get_email_service(),
@@ -44,6 +49,7 @@ def get_stockly_service():
         openai_service=get_openai_service(),
         aws_service=get_aws_service(),
         instagram_service=get_instagram_service(),
+        fetch_logo_service=get_fetch_logo_service(),
     )
 
 

@@ -22,6 +22,7 @@ from app.services.parser_service import ParserService
 from app.services.project_io_service import ProjectIoService
 from app.settings import Settings
 from app.models.response.aws_service_response import S3StorageObject
+from app.services.fetch_logo_service import FetchLogoService
 
 logger = get_logger(__name__)
 
@@ -65,6 +66,7 @@ class StocklyService:
         openai_service: OpenAIService,
         aws_service: AWSService,
         instagram_service: InstagramService,
+        fetch_logo_service: FetchLogoService,
     ):
         self.email_service = email_service
         self.parser_service = parser_service
@@ -72,6 +74,7 @@ class StocklyService:
         self.openai_service = openai_service
         self.aws_service = aws_service
         self.instagram_service = instagram_service
+        self.fetch_logo_service = fetch_logo_service
 
         self.settings = Settings().get_settings()
 
@@ -261,16 +264,42 @@ class StocklyService:
 
             s3_object_names = []
 
-            intro_s3_object = self._create_s3_object_from_image_prompt(
-                GenerateImageRequest(
-                    text_prompt=intro_text,
-                    sentiment=sentiment,
-                ),
-                text_overlay="",
-                bolded_text=intro_text,
+            company_logo_url = self.fetch_logo_service.fetch_company_logo(
+                stock.full_name
             )
-            if intro_s3_object:
-                s3_object_names.append(intro_s3_object.object_name)
+            if company_logo_url:
+                company_logo_filepath = self.project_io_service.download_image(
+                    company_logo_url
+                )
+                overlaid_logo_path = self.project_io_service.image_overlay(
+                    background_image_path="/workspaces/stockly/be/app/assets/bg_image.jpg",
+                    overlay_image_path=company_logo_filepath,
+                    output_file_path="overlaid_logo.png",
+                )
+                overlaid_logo_path_with_text = self.project_io_service.text_overlay(
+                    image_filepath=overlaid_logo_path,
+                    text="",
+                    bolded_text=intro_text,
+                )
+                logo_s3_object = self.aws_service.upload_file(
+                    UploadImageRequest(
+                        file_path=overlaid_logo_path_with_text,
+                        bucket=self.settings.AWS_BUCKET_NAME,
+                    )
+                )
+                if logo_s3_object:
+                    s3_object_names.append(logo_s3_object.object_name)
+
+            # intro_s3_object = self._create_s3_object_from_image_prompt(
+            #     GenerateImageRequest(
+            #         text_prompt=intro_text,
+            #         sentiment=sentiment,
+            #     ),
+            #     text_overlay="",
+            #     bolded_text=intro_text,
+            # )
+            # if intro_s3_object:
+            #     s3_object_names.append(intro_s3_object.object_name)
 
             for prompt in body_text:
                 if "sentiment analysis" in prompt.lower() and "\n" in prompt:

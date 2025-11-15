@@ -282,3 +282,71 @@ class ProjectIoService:
         image.save(output_filepath)
 
         return output_filepath
+
+    def image_overlay(
+        self, background_image_path: str, overlay_image_path: str, output_file_path: str
+    ) -> str:
+        """Overlay an image on top of a background image at the center.
+
+        Parameters
+        ----------
+        background_image_path : str
+            Path to the background image.
+        overlay_image_path : str
+            Path to the overlay image.
+
+        Returns
+        -------
+        str
+            Path to the output image with overlay.
+        """
+        logger.info(
+            f"Overlaying image {overlay_image_path} on background {background_image_path}"
+        )
+        background = Image.open(background_image_path).convert("RGBA")
+        overlay = Image.open(overlay_image_path).convert("RGBA")
+
+        # Resize overlay: ensure its shorter side is at least 33% of the background
+        # Example: if overlay is landscape (w > h), set its height to 33% of bg height
+        bg_w, bg_h = background.size
+        ov_w, ov_h = overlay.size
+
+        min_ratio = 0.25
+        if ov_w >= ov_h:
+            # Landscape or square: drive scale by height
+            target_short = int(bg_h * min_ratio)
+            scale = target_short / ov_h if ov_h else 1.0
+        else:
+            # Portrait: drive scale by width
+            target_short = int(bg_w * min_ratio)
+            scale = target_short / ov_w if ov_w else 1.0
+
+        new_ov_w = max(1, int(round(ov_w * scale)))
+        new_ov_h = max(1, int(round(ov_h * scale)))
+
+        # Ensure the resized overlay still fits within the background bounds
+        fit_scale = min(bg_w / new_ov_w, bg_h / new_ov_h, 1.0)
+        if fit_scale < 1.0:
+            new_ov_w = max(1, int(round(new_ov_w * fit_scale)))
+            new_ov_h = max(1, int(round(new_ov_h * fit_scale)))
+
+        # Use LANCZOS resampling; Pillow removed the ANTIALIAS alias in newer versions.
+        resample_filter = Image.Resampling.LANCZOS
+
+        overlay = overlay.resize((new_ov_w, new_ov_h), resample=resample_filter)
+
+        # Calculate position to center the overlay
+        position = (
+            (bg_w - new_ov_w) // 2,
+            (bg_h - new_ov_h) // 2,
+        )
+
+        # Composite images
+        combined = Image.new("RGBA", background.size)
+        combined.paste(background, (0, 0))
+        combined.paste(overlay, position, mask=overlay)
+
+        # Save the result
+        combined.convert("RGB").save(output_file_path)
+
+        return output_file_path
