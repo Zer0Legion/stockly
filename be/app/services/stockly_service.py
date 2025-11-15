@@ -272,7 +272,7 @@ class StocklyService:
                     company_logo_url
                 )
                 overlaid_logo_path = self.project_io_service.image_overlay(
-                    background_image_path="/workspaces/stockly/be/app/assets/bg_image.jpg",
+                    background_image_path=self.settings.BACKGROUND_IMAGE_PATH,
                     overlay_image_path=company_logo_filepath,
                     output_file_path="overlaid_logo.png",
                 )

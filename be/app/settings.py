@@ -13,6 +13,7 @@ class MODE(enum.Enum):
 
 class Settings(BaseModel):
     ORG_NAME: str = "Stockly"
+    BACKGROUND_IMAGE_PATH: str = "app/assets/bg_image.jpg"
 
     # Endpoints
     BACKEND_URL: str = "0.0.0.0"
@@ -23,7 +24,9 @@ class Settings(BaseModel):
     EMAIL_PASSWORD: str = "EMAIL_PASSWORD"
 
     # Briefing email
-    CONTENT_PREFIX: str = "Dear {},\n\nGood morning from all of us at {}! Here is our curated summary for you:\n\n# Report of your selected stocks:\n\n"
+    CONTENT_PREFIX: str = (
+        "Dear {},\n\nGood morning from all of us at {}! Here is our curated summary for you:\n\n# Report of your selected stocks:\n\n"
+    )
 
     # OpenAI
     OPENAI_API_KEY: str = "OPENAI_API_KEY"
