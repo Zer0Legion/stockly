@@ -80,7 +80,7 @@ class ParserService:
 
         # Add sentiment analysis as a separate point
         if sentiment_text:
-            points.append(sentiment_text.replace(":", "\n").strip())
+            points.append(sentiment_text.strip())
 
         return points
 

@@ -32,7 +32,7 @@ class Settings(BaseModel):
     # Instagram
     INSTA_USER_ID: str = "user"
     INSTA_ACCESS_TOKEN: str = "token"
-    INSTA_CONTAINER_URL_PREFIX: str = (
+    S3_CONTAINER_URL_PREFIX: str = (
         "https://stockly-bendover.s3.us-east-1.amazonaws.com/"
     )
 

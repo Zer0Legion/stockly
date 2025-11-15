@@ -1,4 +1,5 @@
 from datetime import date
+from math import e
 
 import requests
 
@@ -20,36 +21,38 @@ from app.services.openai_service import OpenAIService
 from app.services.parser_service import ParserService
 from app.services.project_io_service import ProjectIoService
 from app.settings import Settings
+from app.models.response.aws_service_response import S3StorageObject
 
 logger = get_logger(__name__)
 
 CAPTION_HASHTAGS = [
     "stockly",
-    "finance", 
-    "stocks", 
-    "investing", 
-    "stockmarket", 
-    "trading", 
-    "wallstreet", 
-    "business", 
-    "genai", 
-    "openai", 
-    "ai", 
-    "money", 
-    "financialnews", 
-    "economy", 
-    "investment", 
-    "wealth", 
-    "daytrading", 
-    "stockanalysis", 
-    "financialfreedom", 
-    "stocktips", 
+    "finance",
+    "stocks",
+    "investing",
+    "stockmarket",
+    "trading",
+    "wallstreet",
+    "business",
+    "genai",
+    "openai",
+    "ai",
+    "money",
+    "financialnews",
+    "economy",
+    "investment",
+    "wealth",
+    "daytrading",
+    "stockanalysis",
+    "financialfreedom",
+    "stocktips",
     "marketanalysis",
     "education",
     "educational",
     "economics",
     "personalfinance",
 ]
+
 
 class StocklyService:
     """The service to perform higher-level processing of stock analysis."""
@@ -169,10 +172,55 @@ class StocklyService:
             stock.exchange,
         ]
 
-        caption = caption + "\n"
+        caption = caption + "\n\n"
         hashtags = " ".join([f"#{tag}" for tag in hashtags])
-        
+
         return caption + hashtags
+
+    def _create_s3_object_from_image_prompt(
+        self,
+        image_request: GenerateImageRequest,
+        text_overlay: str,
+        bolded_text: str = "",
+    ) -> S3StorageObject | None:
+        logger.info(f"Generating image prompt for: {image_request.text_prompt}")
+        logger.info(f"bolded: {bolded_text}")
+        logger.info(f"text_overlay: {text_overlay}")
+
+        image_url = self.openai_service.generate_image_prompt(
+            request=image_request,
+        )
+        if image_url:
+            downloaded_file = self.project_io_service.download_image(image_url)
+            downloaded_file_with_text = self.project_io_service.text_overlay(
+                image_filepath=downloaded_file,
+                text=text_overlay,
+                bolded_text=bolded_text,
+            )
+            s3_object = self.aws_service.upload_file(
+                UploadImageRequest(
+                    file_path=downloaded_file_with_text,
+                    bucket=self.settings.AWS_BUCKET_NAME,
+                )
+            )
+            if s3_object:
+                self.cleanup_temp_files(
+                    local_files=[
+                        downloaded_file,
+                        downloaded_file_with_text,
+                    ]
+                )
+                return s3_object
+            else:
+                logger.error(
+                    f"Failed to upload image to S3 for prompt: {image_request.text_prompt} with sentiment: {image_request.sentiment}"
+                )
+                return None
+        else:
+            logger.error(
+                f"Failed to generate image for prompt: {image_request.text_prompt} with sentiment: {image_request.sentiment}"
+            )
+            return None
 
     def create_end_to_end_post(
         self, stock: StockRequestInfo
@@ -196,40 +244,53 @@ class StocklyService:
                 self.get_stock_analysis(stock).replace("#", "").replace("**", "")
             )
 
-            stock_analysis = stock_analysis.replace("Summary:", f"{stock.long_name} ({stock.exchange}:{stock.ticker}) Analysis:")
+            stock_analysis = stock_analysis.replace(
+                "Summary:",
+                f"{stock.long_name} ({stock.exchange}:{stock.ticker}) Analysis:",
+            )
+            sentiment = self.parser_service.find_sentiment(stock_analysis)
             split_text = self.parser_service.split_text_for_images(stock_analysis)
 
+            intro_text, body_text = split_text[0], split_text[1:]
+
             caption = f"""{date.today().strftime("%b %d")} Analysis on {stock.long_name} ({stock.exchange}:{stock.ticker})"""
-            
+
             caption = self._add_hashtags_to_caption(caption, stock)
-            
+
             logger.info(f"caption: {caption}")
 
             s3_object_names = []
 
-            for prompt in split_text:
-                logger.info(f"Generating image prompt for: {prompt}")
+            intro_s3_object = self._create_s3_object_from_image_prompt(
+                GenerateImageRequest(
+                    text_prompt=intro_text,
+                    sentiment=sentiment,
+                ),
+                text_overlay="",
+                bolded_text=intro_text,
+            )
+            if intro_s3_object:
+                s3_object_names.append(intro_s3_object.object_name)
 
-                image_url = self.openai_service.generate_image_prompt(
-                    request=GenerateImageRequest(
+            for prompt in body_text:
+                if "sentiment analysis" in prompt.lower() and "\n" in prompt:
+                    header, body = prompt.split("\n", 1)
+                elif ":" in prompt:
+                    header, body = prompt.split(":", 1)
+                else:
+                    header = ""
+                    body = prompt
+                s3_object = self._create_s3_object_from_image_prompt(
+                    GenerateImageRequest(
                         text_prompt=prompt,
-                        sentiment=self.parser_service.find_sentiment(stock_analysis),
+                        sentiment=sentiment,
                     ),
+                    text_overlay=body,
+                    bolded_text=header,
                 )
-                if image_url:
-                    downloaded_file = self.project_io_service.download_image(image_url)
-                    downloaded_file_with_text = self.project_io_service.text_overlay(
-                        image_filepath=downloaded_file,
-                        text=prompt,
-                    )
-                    s3_object = self.aws_service.upload_file(
-                        UploadImageRequest(
-                            file_path=downloaded_file_with_text,
-                            bucket=self.settings.AWS_BUCKET_NAME,
-                        )
-                    )
+                if s3_object:
                     s3_object_names.append(s3_object.object_name)
-            
+
             s3_object_names.append(self.settings.LAST_INSTAGRAM_PICTURE_S3_NAME)
 
             logger.info(f"S3 Object Names: {s3_object_names}")
@@ -246,14 +307,14 @@ class StocklyService:
             res = ErrorResponse(error_code=e.error_code, error_message=str(e))
 
         self.cleanup_temp_files(
-            s3_object_names,
-            downloaded_file,
-            downloaded_file_with_text,
+            s3_object_names=s3_object_names,
         )
 
         return res
 
-    def cleanup_temp_files(self, s3_object_names: list[str], downloaded_file: str, downloaded_file_with_text: str):
+    def cleanup_temp_files(
+        self, s3_object_names: list[str] = [], local_files: list[str] = []
+    ):
         """
         Cleanup temporary files created during processing.
         """
@@ -267,5 +328,5 @@ class StocklyService:
                     )
                 )
         # Cleanup local files
-        self.project_io_service.delete_file(filename=downloaded_file)
-        self.project_io_service.delete_file(filename=downloaded_file_with_text)
+        for local_file in local_files:
+            self.project_io_service.delete_file(filename=local_file)

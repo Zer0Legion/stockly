@@ -9,7 +9,11 @@ from app.models.request.instagram_service_request import (
 )
 from app.settings import Settings
 from app.logging_config import get_logger
-from app.models.response.instagram_service_response import InstagramContainerStatus, InstagramContainerStatusCodeEnum, InstagramServiceContainer
+from app.models.response.instagram_service_response import (
+    InstagramContainerStatus,
+    InstagramContainerStatusCodeEnum,
+    InstagramServiceContainer,
+)
 
 logger = get_logger(__name__)
 
@@ -18,22 +22,35 @@ class InstagramService:
     def __init__(self):
         self.settings = Settings().get_settings()
 
-    def _create_container(self, req: InstagramImageRequest) -> InstagramServiceContainer:
+    def _create_container_from_s3(
+        self, req: InstagramImageRequest
+    ) -> InstagramServiceContainer:
+        # Require that s3_object_id is provided
+        if not req.s3_object_id:
+            raise ValueError("s3_object_id must be provided in InstagramImageRequest")
+        req.url = f"{self.settings.S3_CONTAINER_URL_PREFIX}{req.s3_object_id}"
+        return self._create_instagram_image_container(req)
+
+    def _create_instagram_image_container(
+        self, req: InstagramImageRequest
+    ) -> InstagramServiceContainer:
         response = requests.post(
             url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media",
+            headers={"Content-Type": "application/json"},
             params={
-                "image_url": f"{self.settings.INSTA_CONTAINER_URL_PREFIX}{req.s3_object_id}",
-                "caption": req.caption,
                 "access_token": self.settings.INSTA_ACCESS_TOKEN,
+                "image_url": req.url,
+                "caption": req.caption,
             },
         )
         if response:
-            logger.info("Created container response: %s", response.json())
             return InstagramServiceContainer.model_validate(response.json())
         else:
-            raise ExternalServiceError("Failed to create container")
+            raise ExternalServiceError("Failed to create image container")
 
-    def publish_container(self, container: InstagramServiceContainer) -> InstagramServiceContainer:
+    def publish_container(
+        self, container: InstagramServiceContainer
+    ) -> InstagramServiceContainer:
         logger.info(f"Publishing container with ID: {container.id}")
         response = requests.post(
             url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media_publish",
@@ -48,7 +65,9 @@ class InstagramService:
         if response:
             return InstagramServiceContainer.model_validate(response.json())
         else:
-            raise ExternalServiceError(f"Failed to publish container Errors: {response.json()}")
+            raise ExternalServiceError(
+                f"Failed to publish container Errors: {response.json()}"
+            )
 
     def publish_image(self, req: InstagramImageRequest) -> InstagramServiceContainer:
         """
@@ -67,7 +86,10 @@ class InstagramService:
             the success response, or None
         """
         try:
-            container = self._create_container(req)
+            if req.s3_object_id:
+                container = self._create_container_from_s3(req)
+            else:
+                container = self._create_instagram_image_container(req)
             return self.publish_container(container)
         except KeyError as e:
             logger.error("Key not found in response:", e)
@@ -77,7 +99,9 @@ class InstagramService:
             logger.error("External service error:", e)
             raise e
 
-    def publish_carousel_image(self, req: InstagramCarouselRequest) -> InstagramServiceContainer:
+    def publish_carousel_image(
+        self, req: InstagramCarouselRequest
+    ) -> InstagramServiceContainer:
         """
         Publishes a carousel of images to instagram as a post.
 
@@ -96,7 +120,8 @@ class InstagramService:
             # Get IG containers
             if req.instagram_container_ids:
                 containers = [
-                    InstagramServiceContainer(id=container_id) for container_id in req.instagram_container_ids
+                    InstagramServiceContainer(id=container_id)
+                    for container_id in req.instagram_container_ids
                 ]
             else:
                 containers = []
@@ -104,10 +129,8 @@ class InstagramService:
                     logger.info(f"Creating container for S3 object ID: {s3_object_id}")
 
                     try:
-                        container = self._create_container(
-                            InstagramImageRequest(
-                                s3_object_id=s3_object_id, caption=""
-                            )
+                        container = self._create_container_from_s3(
+                            InstagramImageRequest(s3_object_id=s3_object_id, caption="")
                         )
                         containers.append(container)
                     except ExternalServiceError as e:
@@ -134,16 +157,23 @@ class InstagramService:
                             "Authorization": f"Bearer {self.settings.INSTA_ACCESS_TOKEN}",
                         },
                         params={
-                            "children": ",".join([container.id for container in containers]),
+                            "children": ",".join(
+                                [container.id for container in containers]
+                            ),
                             "media_type": "CAROUSEL",
                             "caption": caption,
                         },
                     )
 
                     if response:
-                        carousel_container = InstagramServiceContainer.model_validate(response.json())
+                        carousel_container = InstagramServiceContainer.model_validate(
+                            response.json()
+                        )
 
-                        while self.get_container_status(carousel_container).status_code != InstagramContainerStatusCodeEnum.FINISHED:
+                        while (
+                            self.get_container_status(carousel_container).status_code
+                            != InstagramContainerStatusCodeEnum.FINISHED
+                        ):
                             logger.info("Waiting for carousel container to be ready...")
                             time.sleep(2)
 
@@ -166,8 +196,10 @@ class InstagramService:
         except ExternalServiceError as e:
             logger.error(f"External service error: {e}")
             raise e
-        
-    def create_carousel_container(self, ig_container_ids: list[str], caption: str) -> InstagramServiceContainer:
+
+    def create_carousel_container(
+        self, ig_container_ids: list[str], caption: str
+    ) -> InstagramServiceContainer:
         """
         Creates an Instagram carousel container.
 
@@ -197,10 +229,10 @@ class InstagramService:
             return InstagramServiceContainer.model_validate(response.json())
         else:
             raise ExternalServiceError("Failed to create carousel container")
-    
 
-        
-    def get_container_status(self, container: InstagramServiceContainer) -> InstagramContainerStatus:
+    def get_container_status(
+        self, container: InstagramServiceContainer
+    ) -> InstagramContainerStatus:
         """
         Get the status of an Instagram container.
 
@@ -218,7 +250,7 @@ class InstagramService:
             url=f"https://graph.instagram.com/v21.0/{container.id}",
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.settings.INSTA_ACCESS_TOKEN}"
+                "Authorization": f"Bearer {self.settings.INSTA_ACCESS_TOKEN}",
             },
             params={
                 "fields": "status_code,id,status",

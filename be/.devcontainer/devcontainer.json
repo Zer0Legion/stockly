@@ -17,7 +17,8 @@
         "charliermarsh.ruff",
         "yzhang.markdown-all-in-one",
         "tamasfe.even-better-toml",
-        "ms-vscode.makefile-tools"
+        "ms-vscode.makefile-tools",
+        "ms-python.black-formatter"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",

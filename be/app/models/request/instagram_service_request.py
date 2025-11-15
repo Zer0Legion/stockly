@@ -2,8 +2,9 @@ from pydantic import BaseModel
 
 
 class InstagramImageRequest(BaseModel):
-    s3_object_id: str
+    s3_object_id: str = ""
     caption: str = ""
+    url: str = ""
 
 class InstagramCarouselRequest(BaseModel):
     s3_object_ids: list[str]

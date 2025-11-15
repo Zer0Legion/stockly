@@ -170,6 +170,7 @@ class ProjectIoService:
         color: tuple[int, int, int] = (255, 255, 255),
         line_width: int = 50,
         line_spacing: int = 6,
+        bolded_text: str = "",
     ):
         """Draw wrapped text at the bottom-middle of the image.
 
@@ -203,21 +204,32 @@ class ProjectIoService:
         # Normalize and wrap text into lines of <= line_width characters.
 
         # Split existing paragraphs, wrap each separately
+        # Build a list of tuples: (line_text, is_bold)
+        wrapped_lines: list[tuple[str, bool]] = []
 
-        if len([t.strip() for t in text.split(":", 1)]) == 2:
-            bolded, caption = [t.strip() for t in text.split(":", 1)]
-        else:
-            bolded = ""
-            caption = text
+        # 1) Add bolded_text (if provided) as bold lines
+        bt = (bolded_text or "").strip()
+        if bt:
+            for paragraph in bt.splitlines():
+                paragraph = paragraph.strip()
+                if not paragraph:
+                    wrapped_lines.append(("", True))
+                    continue
+                lines = textwrap.wrap(
+                    paragraph,
+                    width=line_width,
+                    break_long_words=True,
+                    replace_whitespace=True,
+                    drop_whitespace=True,
+                )
+                wrapped_lines.extend((ln, True) for ln in lines)
 
-        wrapped_lines: list[str] = [bolded]
-
-        for paragraph in caption.splitlines():
+        # 2) Add the rest of the caption as normal (unbold) lines
+        for paragraph in (text or "").splitlines():
             paragraph = paragraph.strip()
             if not paragraph:
-                wrapped_lines.append("")  # preserve blank line
+                wrapped_lines.append(("", False))  # preserve blank line
                 continue
-            # word wrap to max line_width chars
             lines = textwrap.wrap(
                 paragraph,
                 width=line_width,
@@ -225,16 +237,17 @@ class ProjectIoService:
                 replace_whitespace=True,
                 drop_whitespace=True,
             )
-            wrapped_lines.extend(lines)
+            wrapped_lines.extend((ln, False) for ln in lines)
 
         # Measure total height
         line_heights = []
         line_widths = []
-        for line in wrapped_lines:
+        for line, is_bold in wrapped_lines:
+            active_font = bold_font if is_bold else font
             if line == "":  # blank line approximate height of a space
-                bbox = draw.textbbox((0, 0), " ", font=font)
+                bbox = draw.textbbox((0, 0), " ", font=active_font)
             else:
-                bbox = draw.textbbox((0, 0), line, font=font)
+                bbox = draw.textbbox((0, 0), line, font=active_font)
             w = bbox[2] - bbox[0]
             h = bbox[3] - bbox[1]
             line_heights.append(h)
@@ -247,14 +260,13 @@ class ProjectIoService:
         # Draw each line centered with a black outline (stroke) for readability
         current_y = start_y
 
-        for i, line in enumerate(wrapped_lines):
+        for i, (line, is_bold) in enumerate(wrapped_lines):
             w = line_widths[i]
             h = line_heights[i]
             x = max(0, (img_w - w) / 2)
             if line:
-                active_font = font if i > 0 else bold_font
-                active_stroke_width = 4 if i > 0 else 6
-                # Using Pillow's stroke_width to create an outline
+                active_font = bold_font if is_bold else font
+                active_stroke_width = 6 if is_bold else 4
                 draw.text(
                     (x, current_y),
                     line,
@@ -270,13 +282,3 @@ class ProjectIoService:
         image.save(output_filepath)
 
         return output_filepath
-
-
-if __name__ == "__main__":
-
-    text_size = 35
-    caption = """Market Performance: Apple (AAPL) has recently been experiencing fluctuations in its stock price, influenced by broader market trends and specific company developments. While the stock has outperformed in certain periods, it has also seen declines due to overall market conditions and investor sentiment.
-"""
-
-    service = ProjectIoService()
-    service.text_overlay("/workspaces/stockly/be/filename.png", caption)
