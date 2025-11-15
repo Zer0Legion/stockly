@@ -290,16 +290,13 @@ class StocklyService:
                 if logo_s3_object:
                     s3_object_names.append(logo_s3_object.object_name)
 
-            # intro_s3_object = self._create_s3_object_from_image_prompt(
-            #     GenerateImageRequest(
-            #         text_prompt=intro_text,
-            #         sentiment=sentiment,
-            #     ),
-            #     text_overlay="",
-            #     bolded_text=intro_text,
-            # )
-            # if intro_s3_object:
-            #     s3_object_names.append(intro_s3_object.object_name)
+                    self.cleanup_temp_files(
+                        local_files=[
+                            company_logo_filepath,
+                            overlaid_logo_path,
+                            overlaid_logo_path_with_text,
+                        ]
+                    )
 
             for prompt in body_text:
                 if "sentiment analysis" in prompt.lower() and "\n" in prompt:
