@@ -58,6 +58,9 @@ class Settings(BaseModel):
     DEEPSEEK_KEY: str = ""
     GEMINI_KEY: str = ""
 
+    # API Authentication
+    API_BEARER_TOKEN: str = ""
+
     def get_settings(self) -> "Settings":
         """
         Load configuration with the following precedence (highest last):
