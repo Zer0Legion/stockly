@@ -10,7 +10,6 @@
 
 .venv
 .ruff_cache
-.github
 .__pycache__
 
 # log
