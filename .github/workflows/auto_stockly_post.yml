@@ -28,6 +28,7 @@ jobs:
             exit 1
           fi
 
+          echo "$API_URL $POST_TOKEN"
           echo "Calling $API_URL (max attempts: $MAX_ATTEMPTS)"
           attempt=1
 
