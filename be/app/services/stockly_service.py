@@ -23,6 +23,7 @@ from app.services.project_io_service import ProjectIoService
 from app.settings import Settings
 from app.models.response.aws_service_response import S3StorageObject
 from app.services.fetch_logo_service import FetchLogoService
+from app.logic.automation_logic import AutomationLogic
 
 logger = get_logger(__name__)
 
@@ -356,3 +357,17 @@ class StocklyService:
         # Cleanup local files
         for local_file in local_files:
             self.project_io_service.delete_file(filename=local_file)
+
+    def auto_stockly_post(self) -> None:
+        """
+        Create an automatic stockly post. Meant for CRON job.
+        """
+
+        logger.info("Starting auto_stockly_post")
+        logic = AutomationLogic()
+        req = logic.get_next_stock_request()
+        res = self.create_end_to_end_post(req)
+        if res and isinstance(res, SuccessResponse):
+            logger.info(f"Auto stockly post created for {req.ticker} successfully.")
+        else:
+            logger.error(f"Failed to create auto stockly post for {req.ticker}.")

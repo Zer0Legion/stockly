@@ -69,3 +69,17 @@ def stock_analysis(
         return stockly_service.get_stock_analysis(stock)
     except StocklyError as e:
         return ErrorResponse(error_code=e.error_code, error_message=str(e))
+
+
+@router.get(
+    path="/auto_stockly_post",
+    dependencies=[Depends(get_stockly_service)],
+    responses={200: {"model": SuccessResponse}, 400: {"model": ErrorResponse}},
+)
+def auto_stockly_post(
+    stockly_service: StocklyService = Depends(get_stockly_service),
+):
+    """
+    Perform automatic stock analysis for predefined stocks.
+    """
+    return stockly_service.auto_stockly_post()
