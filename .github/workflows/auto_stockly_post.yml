@@ -20,41 +20,5 @@ jobs:
           POST_TOKEN: ${{ secrets.POST_TOKEN }}
           MAX_ATTEMPTS: 3
           SLEEP_BETWEEN: 10
-        run: |
-          set -euo pipefail
-
-          if [ -z "${API_URL:-}" ]; then
-            echo "ERROR: API_URL secret is not set. Add it in Settings → Secrets and variables → Actions."
-            exit 1
-          fi
-
-          echo "$API_URL $POST_TOKEN"
-          echo "Calling $API_URL (max attempts: $MAX_ATTEMPTS)"
-          attempt=1
-
-          while [ $attempt -le $MAX_ATTEMPTS ]; do
-            echo "Attempt $attempt..."
-            http_status=$(curl -sS -o /tmp/resp -w "%{http_code}" -X GET \
-              -H "accept: application/json" \
-              -H "Authorization: ${POST_TOKEN}" \
-              "$API_URL" || true)
-
-            echo "HTTP status: $http_status"
-            cat /tmp/resp || true
-
-            # treat 2xx and 3xx as success
-            if [ "${http_status:0:1}" = "2" ] || [ "${http_status:0:1}" = "3" ]; then
-              echo "Request successful."
-              exit 0
-            fi
-
-            echo "Request failed with status $http_status."
-            attempt=$((attempt + 1))
-            if [ $attempt -le $MAX_ATTEMPTS ]; then
-              echo "Sleeping ${SLEEP_BETWEEN}s before retry..."
-              sleep $SLEEP_BETWEEN
-            fi
-          done
-
-          echo "All attempts failed. Exiting with non-zero status to mark workflow as failed."
-          exit 1
+        run: 
+          "curl --location --globoff '$API_URL --header 'Authorization: $POST_TOKEN'"
