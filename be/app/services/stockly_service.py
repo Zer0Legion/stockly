@@ -1,5 +1,4 @@
 from datetime import date
-from math import e
 
 import requests
 
@@ -100,9 +99,7 @@ class StocklyService:
         chatgpt_response = self.openai_service.generate_written_prompt(
             stock.ticker, cleaned_html
         )
-        chatgpt_text = chatgpt_response["choices"][0]["message"]["content"]
-
-        return chatgpt_text
+        return chatgpt_response
 
     def send_briefing_email(
         self,
@@ -135,10 +132,9 @@ class StocklyService:
 
                     cleaned_html = self.parser_service.format_html(stock, html_response)
 
-                    chatgpt_response = self.openai_service.generate_written_prompt(
+                    chatgpt_text = self.openai_service.generate_written_prompt(
                         stock.ticker, cleaned_html
                     )
-                    chatgpt_text = chatgpt_response["choices"][0]["message"]["content"]
 
                     self.project_io_service.append_report(chatgpt_text + "\n\n")
 
