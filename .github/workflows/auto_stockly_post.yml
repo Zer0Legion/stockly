@@ -32,7 +32,7 @@ jobs:
             echo "Attempt $attempt..."
             http_status=$(curl -sS -o /tmp/resp -w "%{http_code}" -X GET \
               -H "accept: application/json" \
-              -H "Authorization: ${POST_TOKEN}" \
+              -H "Authorization: Bearer ${POST_TOKEN}" \
               "$API_URL" || true)
 
             echo "HTTP status: $http_status"
