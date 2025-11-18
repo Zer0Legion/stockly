@@ -19,8 +19,16 @@ logger = get_logger(__name__)
 
 
 class InstagramService:
-    def __init__(self):
+
+    user_id: str
+    access_token: str
+
+    def __init__(
+        self, user_id: str | None = None, access_token: str | None = None
+    ) -> None:
         self.settings = Settings().get_settings()
+        self.user_id = user_id or self.settings.INSTA_USER_ID
+        self.access_token = access_token or self.settings.INSTA_ACCESS_TOKEN
 
     def _create_container_from_s3(
         self, req: InstagramImageRequest
@@ -35,10 +43,10 @@ class InstagramService:
         self, req: InstagramImageRequest
     ) -> InstagramServiceContainer:
         response = requests.post(
-            url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media",
+            url=f"https://graph.instagram.com/v21.0/{self.user_id}/media",
             headers={"Content-Type": "application/json"},
             params={
-                "access_token": self.settings.INSTA_ACCESS_TOKEN,
+                "access_token": self.access_token,
                 "image_url": req.url,
                 "caption": req.caption,
             },
@@ -52,11 +60,19 @@ class InstagramService:
         self, container: InstagramServiceContainer
     ) -> InstagramServiceContainer:
         logger.info(f"Publishing container with ID: {container.id}")
+
+        while (
+            self.get_container_status(container).status_code
+            != InstagramContainerStatusCodeEnum.FINISHED
+        ):
+            logger.info("Waiting for carousel container to be ready...")
+            time.sleep(2)
+
         response = requests.post(
-            url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media_publish",
+            url=f"https://graph.instagram.com/v21.0/{self.user_id}/media_publish",
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.settings.INSTA_ACCESS_TOKEN}",
+                "Authorization": f"Bearer {self.access_token}",
             },
             params={
                 "creation_id": container.id,
@@ -151,10 +167,10 @@ class InstagramService:
                         f"Attempt {attempt} to create carousel with containers: {containers}\n{caption}"
                     )
                     response = requests.post(
-                        url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media",
+                        url=f"https://graph.instagram.com/v21.0/{self.user_id}/media",
                         headers={
                             "Content-Type": "application/json",
-                            "Authorization": f"Bearer {self.settings.INSTA_ACCESS_TOKEN}",
+                            "Authorization": f"Bearer {self.access_token}",
                         },
                         params={
                             "children": ",".join(
@@ -169,13 +185,6 @@ class InstagramService:
                         carousel_container = InstagramServiceContainer.model_validate(
                             response.json()
                         )
-
-                        while (
-                            self.get_container_status(carousel_container).status_code
-                            != InstagramContainerStatusCodeEnum.FINISHED
-                        ):
-                            logger.info("Waiting for carousel container to be ready...")
-                            time.sleep(2)
 
                         return self.publish_container(carousel_container)
                 except Exception as e:
@@ -216,10 +225,10 @@ class InstagramService:
             The response from Instagram API.
         """
         response = requests.post(
-            url=f"https://graph.instagram.com/v21.0/{self.settings.INSTA_USER_ID}/media",
+            url=f"https://graph.instagram.com/v21.0/{self.user_id}/media",
             headers={"Content-Type": "application/json"},
             params={
-                "access_token": self.settings.INSTA_ACCESS_TOKEN,
+                "access_token": self.access_token,
                 "children": ",".join(ig_container_ids),
                 "media_type": "CAROUSEL",
                 "caption": caption,
@@ -250,7 +259,7 @@ class InstagramService:
             url=f"https://graph.instagram.com/v21.0/{container.id}",
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.settings.INSTA_ACCESS_TOKEN}",
+                "Authorization": f"Bearer {self.access_token}",
             },
             params={
                 "fields": "status_code,id,status",
