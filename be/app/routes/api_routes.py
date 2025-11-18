@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.dependencies import get_stockly_service
+from app.dependencies import get_alt_service, get_stockly_service
 from app.errors.base_error import StocklyError
 from app.models.request.send_briefing_email_request import SendEmailRequest
 from app.models.request.stock_request import StockRequestInfo
@@ -19,7 +19,10 @@ def home():
 @router.post(
     path="/send_email",
     dependencies=[Depends(get_stockly_service)],
-    responses={200: {"model": SuccessResponse}, 400: {"model": ErrorResponse}},
+    responses={
+        200: {"model": SuccessResponse},
+        400: {"model": ErrorResponse},
+    },
 )
 def send_email(
     param: SendEmailRequest,
@@ -83,3 +86,21 @@ def auto_stockly_post(
     Perform automatic stock analysis for predefined stocks.
     """
     return stockly_service.auto_stockly_post()
+
+
+@router.get(
+    path="/alt_service",
+    dependencies=[Depends(get_alt_service)],
+    responses={200: {"model": SuccessResponse}, 400: {"model": ErrorResponse}},
+)
+def auto_alt_service_post(
+    alt_service=Depends(get_alt_service),
+):
+    """
+    Create and publish an Instagram post using the Alt Service.
+    """
+    try:
+        alt_service.create_ig_post()
+        return SuccessResponse(data="Alt Service Instagram post created successfully.")
+    except StocklyError as e:
+        return ErrorResponse(error_code=e.error_code, error_message=str(e))

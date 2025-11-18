@@ -7,6 +7,7 @@ from app.services.project_io_service import ProjectIoService
 from app.services.stockly_service import StocklyService
 from app.services.terms_and_conditions_service import TermsAndConditionsService
 from app.services.fetch_logo_service import FetchLogoService
+from app.services.alt_service.alt_service import AltService
 
 
 def __init__():
@@ -55,3 +56,10 @@ def get_stockly_service():
 
 def get_tnc_service():
     return TermsAndConditionsService()
+
+
+def get_alt_service():
+    return AltService(
+        project_io_service=get_project_io_service(),
+        aws_service=get_aws_service(),
+    )

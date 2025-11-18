@@ -39,6 +39,9 @@ class Settings(BaseModel):
         "https://stockly-bendover.s3.us-east-1.amazonaws.com/"
     )
 
+    INSTA_ALT_USER_ID: str = "user"
+    INSTA_ALT_ACCESS_TOKEN: str = "token"
+
     # The last picture of every stockly post
     LAST_INSTAGRAM_PICTURE_S3_NAME: str = "b3d63e0ade95486c9cde2cce567ff790"
 
@@ -60,6 +63,16 @@ class Settings(BaseModel):
 
     # API Authentication
     API_BEARER_TOKEN: str = ""
+
+    # Alt service
+    TOP_COLOURS: str = ""
+    BOTTOM_COLOURS: str = ""
+    CAPTION_TEMPLATES: str = ""
+    EXTRA_PROMPT: str = ""
+    ALT_SERVICE_CAPTION_PROMPT: str = ""
+    ALT_SERVICE_IMAGE_PROMPT: str = ""
+    ALT_S3_OBJECTS: str = ""
+    ALT_S3_BUCKET_NAME: str = "alt-service"
 
     def get_settings(self) -> "Settings":
         """

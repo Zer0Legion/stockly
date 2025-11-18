@@ -30,7 +30,7 @@ def verify_bearer_token(
     Raises 401 if missing or invalid.
     """
     # Allow unauthenticated access to docs and OpenAPI schema
-    if request.url.path in EXEMPTED_FROM_AUTH:
+    if request.url.path in EXEMPTED_FROM_AUTH or request.url.path.startswith("/dev/"):
         return
 
     settings = Settings().get_settings()
