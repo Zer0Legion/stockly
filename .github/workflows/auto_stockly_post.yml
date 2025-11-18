@@ -21,4 +21,4 @@ jobs:
           MAX_ATTEMPTS: 3
           SLEEP_BETWEEN: 10
         run: 
-          "curl --location --globoff '$API_URL --header 'Authorization: $POST_TOKEN'"
+          "curl --location --globoff '$API_URL' --header 'Authorization: $POST_TOKEN'"
