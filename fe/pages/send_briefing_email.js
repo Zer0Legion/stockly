@@ -38,8 +38,7 @@ export default function UserStockForm() {
     setUserRequests(updated);
   };
 
-  const validateEmail = (email) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleSubmit = async () => {
     for (const user of userRequests) {
@@ -93,12 +92,16 @@ export default function UserStockForm() {
               placeholder="Email"
               type="email"
               value={user.email}
-              onChange={(e) => handleUserChange(userIdx, "email", e.target.value)}
+              onChange={(e) =>
+                handleUserChange(userIdx, "email", e.target.value)
+              }
             />
             <Input
               placeholder="Name"
               value={user.name}
-              onChange={(e) => handleUserChange(userIdx, "name", e.target.value)}
+              onChange={(e) =>
+                handleUserChange(userIdx, "name", e.target.value)
+              }
             />
           </div>
 
@@ -110,14 +113,24 @@ export default function UserStockForm() {
                   placeholder="Exchange"
                   value={stock.exchange}
                   onChange={(e) =>
-                    handleStockChange(userIdx, stockIdx, "exchange", e.target.value)
+                    handleStockChange(
+                      userIdx,
+                      stockIdx,
+                      "exchange",
+                      e.target.value,
+                    )
                   }
                 />
                 <Input
                   placeholder="Ticker"
                   value={stock.ticker}
                   onChange={(e) =>
-                    handleStockChange(userIdx, stockIdx, "ticker", e.target.value)
+                    handleStockChange(
+                      userIdx,
+                      stockIdx,
+                      "ticker",
+                      e.target.value,
+                    )
                   }
                 />
               </div>

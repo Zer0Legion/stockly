@@ -7,6 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export default function MakeIGPost() {
   const [exchange, setExchange] = useState("");
   const [ticker, setTicker] = useState("");
+  const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -21,9 +22,15 @@ export default function MakeIGPost() {
 
     try {
       setLoading(true);
+      const headers = { "Content-Type": "application/json" };
+      const trimmed = token.trim();
+      if (trimmed) {
+        headers["Authorization"] = `Bearer ${trimmed}`;
+      }
+
       const res = await fetch(`${API_URL}/create_stockly_post`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload),
       });
 
@@ -51,11 +58,15 @@ export default function MakeIGPost() {
       <h1 className="text-2xl font-semibold mb-4">Create Stockly Post</h1>
 
       <div className="bg-white border rounded-2xl p-6 shadow space-y-4">
-        <p className="text-sm text-gray-600">Enter exchange and ticker to create an end-to-end stock analysis post.</p>
+        <p className="text-sm text-gray-600">
+          Enter exchange and ticker to create an end-to-end stock analysis post.
+        </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Exchange</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Exchange
+            </label>
             <Input
               placeholder="e.g. NYSE"
               value={exchange}
@@ -64,7 +75,9 @@ export default function MakeIGPost() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Ticker</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Ticker
+            </label>
             <Input
               placeholder="e.g. AAPL"
               value={ticker}
@@ -72,11 +85,29 @@ export default function MakeIGPost() {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Bearer Token
+            </label>
+            <Input
+              type="password"
+              placeholder="Paste Bearer token if required"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+            />
+          </div>
+
           <div className="flex gap-2">
             <Button type="submit" disabled={loading}>
               {loading ? "Submitting..." : "Create Post"}
             </Button>
-            <Button type="button" onClick={() => { setExchange(""); setTicker(""); }}>
+            <Button
+              type="button"
+              onClick={() => {
+                setExchange("");
+                setTicker("");
+              }}
+            >
               Reset
             </Button>
           </div>
