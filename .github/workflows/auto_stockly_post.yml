@@ -14,6 +14,12 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Debug
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          POST_TOKEN: ${{ secrets.POST_TOKEN }}
+        run:
+          "echo $API_URL && echo $POST_TOKEN"
       - name: Call /auto_stockly_post with retries
         env:
           API_URL: ${{ secrets.API_URL }}
