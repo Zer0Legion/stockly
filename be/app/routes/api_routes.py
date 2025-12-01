@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends
 
-from app.dependencies import get_alt_service, get_stockly_service
+from app.dependencies import (
+    get_alt_service,
+    get_automation_logic_singleton,
+    get_stockly_service,
+)
 from app.errors.base_error import StocklyError
 from app.models.request.send_briefing_email_request import SendEmailRequest
 from app.models.request.stock_request import StockRequestInfo
@@ -104,3 +108,41 @@ def auto_alt_service_post(
         return SuccessResponse(data="Alt Service Instagram post created successfully.")
     except StocklyError as e:
         return ErrorResponse(error_code=e.error_code, error_message=str(e))
+
+
+@router.get(
+    path="/get_pointer",
+    dependencies=[Depends(get_automation_logic_singleton)],
+    responses={200: {"model": SuccessResponse}, 400: {"model": ErrorResponse}},
+)
+def get_pointer():
+    """
+    Get the current pointer value from automation logic.
+    """
+    try:
+        automation_logic = get_automation_logic_singleton()
+        pointer = automation_logic.pointer
+        current_stock = automation_logic.stock_requests[pointer]
+        return SuccessResponse(
+            data={"pointer": pointer, "current_stock": current_stock}
+        )
+    except StocklyError as e:
+        return ErrorResponse(error_code=e.error_code, error_message=str(e))
+
+
+@router.post(
+    path="/set_pointer",
+    responses={200: {"model": SuccessResponse}, 400: {"model": ErrorResponse}},
+)
+def set_pointer(new_pointer: int):
+    """
+    Set the pointer value in automation logic.
+    """
+    try:
+        automation_logic = get_automation_logic_singleton()
+        automation_logic.set_pointer(new_pointer)
+        return SuccessResponse(data={"new_pointer": automation_logic.get_pointer()})
+    except StocklyError as e:
+        return ErrorResponse(error_code=e.error_code, error_message=str(e))
+    except ValueError as ve:
+        return ErrorResponse(error_code=400, error_message=str(ve))

@@ -114,23 +114,3 @@ def upload_carousel_to_instagram(s3_object_names: list[str], caption: str = ""):
             return SuccessResponse(data="Carousel uploaded to Instagram successfully.")
     except StocklyError as e:
         return ErrorResponse(error_code=e.error_code, error_message=str(e))
-
-
-@router.get(
-    path="/get_pointer",
-    responses={200: {"model": SuccessResponse}, 400: {"model": ErrorResponse}},
-)
-def get_pointer():
-    """
-    (Dev-only) Get the current pointer value from automation logic.
-    """
-    try:
-
-        automation_logic = get_automation_logic_singleton()
-        pointer = automation_logic.pointer
-        current_stock = automation_logic.stock_requests[pointer]
-        return SuccessResponse(
-            data={"pointer": pointer, "current_stock": current_stock}
-        )
-    except StocklyError as e:
-        return ErrorResponse(error_code=e.error_code, error_message=str(e))
