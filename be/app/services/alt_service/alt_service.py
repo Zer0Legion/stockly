@@ -17,6 +17,7 @@ from app.models.request.instagram_service_request import InstagramImageRequest
 from app.services.aws_service import AWSService
 from app.services.instagram_service import InstagramService
 from app.services.project_io_service import ProjectIoService
+from app.services.openai_service import OpenAIService
 
 logger = get_logger(__name__)
 
@@ -33,6 +34,12 @@ class AltService:
         self.deepseek_client = OpenAI(
             api_key=self.settings.DEEPSEEK_KEY, base_url="https://api.deepseek.com"
         )
+        self.openai_service = OpenAIService(
+            client=OpenAI(
+                api_key=self.settings.DEEPSEEK_KEY,
+                base_url="https://api.deepseek.com",
+            )
+        )
         self.CAPTION_TEMPLATES = json.loads(self.settings.CAPTION_TEMPLATES)
         self.TOP_COLOURS = literal_eval(self.settings.TOP_COLOURS)
         self.BOTTOM_COLOURS = literal_eval(self.settings.BOTTOM_COLOURS)
@@ -47,31 +54,11 @@ class AltService:
         )
 
         logger.info(f"Prompting deepseek with: {format_prompt}")
-        response = self.deepseek_client.chat.completions.create(
+        return self.openai_service.hit_api(
             model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant"},
-                {
-                    "role": "user",
-                    "content": format_prompt,
-                },
-            ],
-            stream=False,
+            prompt=format_prompt,
+            retry_count=retry_count,
         )
-        if response.choices[0].message.content:
-            response_text = response.choices[0].message.content.strip().lower()
-
-            # remove period if it exists in last 10 characters
-            if response_text.rfind(".") >= len(response_text) - 10:
-                response_text = response_text.replace(".", "")
-        else:
-            if retry_count < 3:
-                return self.generate_caption(retry_count + 1)
-            else:
-                logger.error("Failed to generate caption after 3 retries")
-                raise ExternalServiceError("Failed to generate caption")
-        logger.info(f"Generated caption: {response_text}")
-        return response_text
 
     def _hit_gemini_api(self, client, prompt, example_image_filepath, retry_count=0):
         try:

@@ -15,18 +15,71 @@ logger = get_logger(__name__)
 
 
 class OpenAIService:
-    def __init__(self):
+
+    def __init__(self, client: OpenAI | None = None):
         self.settings = Settings().get_settings()
 
-        self.client = OpenAI(
+        self.client = client or OpenAI(
             organization="org-DZHAxp8YdIcZZTJ305iG7cKb",
             project="proj_llL0cbSB0T4XXDSSGOvUCbdT",
             api_key=self.settings.OPENAI_API_KEY,
             max_retries=3,
         )
 
+    def hit_api(self, model: str, prompt: str, retry_count=0) -> str:
+        self.settings = Settings().get_settings()
+
+        logger.info(f"Prompting OpenAI with: {prompt}")
+        response = self.client.chat.completions.create(
+            model=model or "gpt-4o",
+            messages=[
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+        )
+
+        if response.choices and len(response.choices) > 0:
+            if response.choices[0].message.content:
+                return response.choices[0].message.content.strip()
+
+        if retry_count < 3:
+            time.sleep(2**retry_count)
+            return self.hit_api(model, prompt, retry_count=retry_count + 1)
+
+        logger.error(f"OpenAI response has no choices: {response}")
+        return ""
+
+    def hit_image_api(
+        self,
+        prompt: str,
+        retry_count=0,
+    ) -> str:
+        self.settings = Settings().get_settings()
+
+        logger.info(f"Prompting OpenAI Images with: {prompt}")
+        response: ImagesResponse = self.client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            n=1,
+            size="1024x1024",
+        )
+
+        if response and response.data and len(response.data) > 0:
+            logger.info(f"Generated image response: {response}")
+            image_url = response.data[0].url
+            assert image_url
+            return image_url
+
+        logger.error(f"Error generating image")
+        if retry_count < 3:
+            time.sleep(2**retry_count)
+            return self.hit_image_api(prompt, retry_count=retry_count + 1)
+        return ""
+
     def generate_written_prompt(
-        self, stock_ticker: str, formatted_html: str, retry_count=0
+        self,
+        stock_ticker: str,
+        formatted_html: str,
     ) -> str:
         """
         Generate a written prompt for the stock based on the formatted HTML.
@@ -39,39 +92,7 @@ class OpenAIService:
         {formatted_html}
         """
 
-        self.settings = Settings().get_settings()
-
-        response: Response = self.client.responses.create(
-            model="gpt-4o-mini",
-            input=[{"role": "user", "content": PROMPT}],
-            temperature=0.7,
-        )
-
-        logger.info(f"Generated written prompt for {stock_ticker}: {response}")
-
-        if response.output and len(response.output) > 0:
-            assert type(response.output[0]) is ResponseOutputMessage
-            response_output: ResponseOutputMessage = response.output[0]
-            content = response_output.content[0]
-
-            if type(content) is ResponseOutputText:
-                return content.text
-            else:
-                assert type(content) is ResponseOutputRefusal
-                output_refusal: ResponseOutputRefusal = content
-                logger.error(
-                    f"OpenAI refused to generate written prompt: {output_refusal.refusal}"
-                )
-        else:
-            logger.error(f"OpenAI response has no output: {response}")
-
-        if retry_count < 3:
-            time.sleep(2**retry_count)
-            return self.generate_written_prompt(
-                stock_ticker, formatted_html, retry_count=retry_count + 1
-            )
-
-        return ""
+        return self.hit_api(model="gpt-4o-mini", prompt=PROMPT)
 
     def generate_image_prompt(self, request: GenerateImageRequest, retry_count=0):
         """
@@ -93,22 +114,8 @@ class OpenAIService:
         self.settings = Settings().get_settings()
         prompt = TEMPLATE.format(request.text_prompt, request.sentiment.value)
 
-        response: ImagesResponse = self.client.images.generate(
-            model="dall-e-3",
+        logger.info(f"Prompting OpenAI Images with: {prompt}")
+        return self.hit_image_api(
             prompt=prompt,
-            n=1,
-            size="1024x1024",
+            retry_count=retry_count,
         )
-
-        if not response:
-            logger.error(f"Error generating image")
-            if retry_count < 3:
-                time.sleep(2**retry_count)
-                return self.generate_image_prompt(request, retry_count=retry_count + 1)
-            return None
-
-        else:
-            assert response.data and len(response.data) > 0
-            logger.info(f"Generated image prompt response: {response}")
-            image_url = response.data[0].url
-            return image_url

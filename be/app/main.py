@@ -20,6 +20,9 @@ EXEMPTED_FROM_AUTH = {"/docs", "/redoc", "/openapi.json"}
 # -----------------
 bearer_scheme = HTTPBearer(auto_error=False)
 
+environment = Settings().get_settings().ENV_MODE
+print(f"Starting application in {environment} mode")
+
 
 def verify_bearer_token(
     request: Request,
@@ -29,6 +32,12 @@ def verify_bearer_token(
     Validates the Authorization: Bearer <token> header against settings.API_BEARER_TOKEN.
     Raises 401 if missing or invalid.
     """
+
+    if environment == MODE.DEV.value:
+        # In DEV mode, skip authentication
+        print("DEV mode detected; skipping authentication")
+        return
+
     # Allow unauthenticated access to docs and OpenAPI schema
     if request.url.path in EXEMPTED_FROM_AUTH or request.url.path.startswith("/dev/"):
         return
