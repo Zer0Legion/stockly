@@ -1,3 +1,4 @@
+from functools import lru_cache
 from app.services.aws_service import AWSService
 from app.services.email_service import EmailService
 from app.services.instagram_service import InstagramService
@@ -8,6 +9,7 @@ from app.services.stockly_service import StocklyService
 from app.services.terms_and_conditions_service import TermsAndConditionsService
 from app.services.fetch_logo_service import FetchLogoService
 from app.services.alt_service.alt_service import AltService
+from app.logic.automation_logic import AutomationLogic
 
 
 def __init__():
@@ -63,3 +65,14 @@ def get_alt_service():
         project_io_service=get_project_io_service(),
         aws_service=get_aws_service(),
     )
+
+
+# -----------------
+# Singleton factories
+# -----------------
+
+
+@lru_cache(maxsize=1)
+def get_automation_logic_singleton() -> AutomationLogic:
+    """Singleton AutomationLogic instance."""
+    return AutomationLogic()

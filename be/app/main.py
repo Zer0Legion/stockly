@@ -4,10 +4,12 @@ import logging
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from contextlib import asynccontextmanager
 
 from app.logging_config import configure_logging, get_logger
 from app.routes import api_routes, dev_routes
 from app.settings import MODE, Settings
+from app.dependencies import get_automation_logic_singleton
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.settings import Settings
@@ -60,8 +62,16 @@ def verify_bearer_token(
         )
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Use FastAPI lifespan to perform startup/shutdown tasks."""
+    _ = get_automation_logic_singleton()
+    get_logger(__name__).info("AltService singleton initialized on startup")
+    yield
+
+
 settings = Settings().get_settings()
-app = FastAPI(dependencies=[Depends(verify_bearer_token)])
+app = FastAPI(dependencies=[Depends(verify_bearer_token)], lifespan=lifespan)
 
 configure_logging(level=logging.INFO)
 logger = get_logger(__name__)

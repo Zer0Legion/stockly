@@ -1,5 +1,6 @@
 from datetime import date
 
+from httpx import get
 import requests
 
 from app.errors.base_error import StocklyError
@@ -22,7 +23,6 @@ from app.services.project_io_service import ProjectIoService
 from app.settings import Settings
 from app.models.response.aws_service_response import S3StorageObject
 from app.services.fetch_logo_service import FetchLogoService
-from app.logic.automation_logic import AutomationLogic
 
 logger = get_logger(__name__)
 
@@ -358,9 +358,10 @@ class StocklyService:
         """
         Create an automatic stockly post. Meant for CRON job.
         """
+        from app.dependencies import get_automation_logic_singleton
 
         logger.info("Starting auto_stockly_post")
-        logic = AutomationLogic()
+        logic = get_automation_logic_singleton()
         req = logic.get_next_stock_request()
         res = self.create_end_to_end_post(req)
         if res and isinstance(res, SuccessResponse):

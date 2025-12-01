@@ -9,25 +9,28 @@ class AutomationLogic:
     pointer: int
     stock_requests: list[StockRequestInfo]
 
-    def __init__(self) -> None:
-        self.pointer = self._get_pointer()
+    def __init__(self, pointer: int = 0) -> None:
+        self.pointer = pointer
         self.stock_requests = self._get_stock_request_list()
 
-    def _get_pointer(self) -> int:
-        with open("app/logic/pointer.txt", "r") as f:
-            pointer = int(f.read().strip())
-        return pointer
+    def get_pointer(self) -> int:
+        return self.pointer or 0
+
+    def set_pointer(self, new_pointer: int) -> None:
+        if 0 <= new_pointer < LIST_SIZE:
+            self.pointer = new_pointer
+        else:
+            raise ValueError(f"Pointer must be between 0 and {LIST_SIZE - 1}")
 
     def _increment_pointer(self) -> int:
         pointer = (self.pointer + 1) % LIST_SIZE
-        with open("app/logic/pointer.txt", "w") as f:
-            f.write(str(pointer))
         return pointer
 
     def _get_stock_request_list(self) -> list[StockRequestInfo]:
         with open("app/logic/stock_request_info.json", "r") as f:
             stock_requests_data = json.load(f)
         stock_requests = [StockRequestInfo(**data) for data in stock_requests_data]
+        self.stock_requests = stock_requests
         return stock_requests
 
     def get_next_stock_request(self) -> StockRequestInfo:

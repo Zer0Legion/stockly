@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends
 
-from app.dependencies import get_aws_service, get_instagram_service, get_openai_service
+from app.dependencies import (
+    get_automation_logic_singleton,
+    get_aws_service,
+    get_instagram_service,
+    get_openai_service,
+)
 from app.errors.base_error import StocklyError
 from app.models.request.aws_service_request import (
     DeleteImageRequest,
@@ -120,9 +125,8 @@ def get_pointer():
     (Dev-only) Get the current pointer value from automation logic.
     """
     try:
-        from app.logic.automation_logic import AutomationLogic
 
-        automation_logic = AutomationLogic()
+        automation_logic = get_automation_logic_singleton()
         pointer = automation_logic.pointer
         current_stock = automation_logic.stock_requests[pointer]
         return SuccessResponse(
