@@ -85,7 +85,7 @@ jobs:
           echo "Calling $API_URL (max attempts: $MAX_ATTEMPTS)"
           attempt=1
 
-          url=$API_URL + "/auto_stockly_post" 
+          url=$API_URL/auto_stockly_post 
           while [ $attempt -le $MAX_ATTEMPTS ]; do
             echo "Attempt $attempt..."
             http_status=$(curl -sS -o /tmp/resp -w "%{http_code}" -X GET \
