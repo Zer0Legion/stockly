@@ -17,10 +17,7 @@ class AutomationLogic:
         return self.pointer or 0
 
     def set_pointer(self, new_pointer: int) -> None:
-        if 0 <= new_pointer < LIST_SIZE:
-            self.pointer = new_pointer
-        else:
-            raise ValueError(f"Pointer must be between 0 and {LIST_SIZE - 1}")
+        self.pointer = new_pointer % LIST_SIZE
 
     def _increment_pointer(self) -> int:
         pointer = (self.pointer + 1) % LIST_SIZE
